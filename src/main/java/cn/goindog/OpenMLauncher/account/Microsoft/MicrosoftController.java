@@ -25,6 +25,7 @@ public class MicrosoftController {
     private static final String Check_Url = "https://api.minecraftservices.com/entitlements/mcstore";
     private static final String get_profile_url = "https://api.minecraftservices.com/minecraft/profile";
     private static final HttpServer server;
+    private static String refresh_token = "";
 
     static {
         try {
@@ -80,6 +81,7 @@ public class MicrosoftController {
                 JsonObject response_obj = new Gson().fromJson(body, JsonObject.class);
                 String ms_token = response_obj.get("access_token").getAsString();
                 XblAuthenticate(ms_token);
+                refresh_token = response_obj.get("refresh_token").getAsString();
             } else {
                 System.out.println("Bad Connection:" + resp.statusCode());
             }
@@ -221,6 +223,7 @@ public class MicrosoftController {
                     JsonObject new_arr_obj = new Gson().fromJson("{}", JsonObject.class);
                     new_arr_obj.addProperty("type", "microsoft");
                     resp_obj.addProperty("token", MinecraftToken);
+                    resp_obj.addProperty("refresh_token", refresh_token);
                     new_arr_obj.add("profile", resp_obj);
                     if (config_obj.has("users")) {
                         for (int i = 0; i < config_obj.get("users").getAsJsonArray().size(); i++) {
