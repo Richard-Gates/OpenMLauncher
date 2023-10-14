@@ -13,6 +13,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.Arrays;
+import java.util.jar.JarFile;
 
 import static java.lang.Thread.State.TERMINATED;
 
@@ -47,8 +49,6 @@ public class ForgeController {
     private static void PrivateCenterDownload(ForgeInstallerConfig conf) throws IOException {
         Thread installer_download = new Thread(() -> {
             PrivateInstallerDownload(conf);
-        });
-        Thread install_tool_download = new Thread(() -> {
             try {
                 PrivateInstallToolDownload(conf);
             } catch (IOException e) {
@@ -56,13 +56,12 @@ public class ForgeController {
             }
         });
         installer_download.start();
-        install_tool_download.start();
-        while (true) {
-            if (install_tool_download.getState().equals(TERMINATED)) {
-                Runtime runtime = Runtime.getRuntime();
-                runtime.exec("cmd.exe java -cp \"forge-installer-headless.jar;forge-installer.jar\" me.xfl03.HeadlessInstaller -installClient " + System.getProperty("oml.gameDir"), null, new File(System.getProperty("oml.gameDir") + "/versions/" + conf.getGameVer() + "-forge-" + conf.getForgeVer()));
-            }
-        }
+//        while (true) {
+//            if (install_tool_download.getState().equals(TERMINATED)) {
+//                Runtime runtime = Runtime.getRuntime();
+//                runtime.exec("cmd.exe java -cp \"forge-installer-headless.jar;forge-installer.jar\" me.xfl03.HeadlessInstaller -installClient " + System.getProperty("oml.gameDir"), null, new File(System.getProperty("oml.gameDir") + "/versions/" + conf.getGameVer() + "-forge-" + conf.getForgeVer()));
+//            }
+//        }
     }
 
     private static void PrivateInstallerDownload(ForgeInstallerConfig conf) {
@@ -82,6 +81,19 @@ public class ForgeController {
         String installJarPath = System.getProperty("oml.gameDir") + "/versions/" + conf.getGameVer() + "-forge-" + conf.getForgeVer() + "/forge-install-tool.jar";
         System.out.println("[INFO]Downloading InstallTools");
         FileUtils.writeByteArrayToFile(new File(installJarPath), IOUtils.toByteArray(new URL("https://github.com/xfl03/ForgeInstallerHeadless/releases/download/1.0.1/forge-installer-headless-1.0.1.jar")));
+        Process proc;
+        if (System.getProperty("os.name").contains("Windows")) {
+            String[] command = new String[]{"cmd.exe", "-c", "cd " + System.getProperty("oml.gameDir") + "/versions/" + conf.getGameVer() + "-forge-" + conf.getForgeVer(), "java -cp \"forge-installer-headless.jar;forge-installer.jar\" me.xfl03.HeadlessInstaller -installClient " + System.getProperty("oml.gameDir")};
+            proc = Runtime.getRuntime().exec(
+                    command
+            );
+            System.out.println(Arrays.toString(command));
+            BufferedReader reader = new BufferedReader(new InputStreamReader(proc.getInputStream()));
+            String line;
+            while ((line = reader.readLine()) != null) {
+                System.out.println("[INFO]" + line);
+            }
+        }
 
     }
 
