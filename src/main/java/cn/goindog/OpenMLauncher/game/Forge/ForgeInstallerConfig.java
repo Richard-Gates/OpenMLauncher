@@ -1,4 +1,4 @@
-package cn.goindog.OpenMLauncher.game;
+package cn.goindog.OpenMLauncher.game.Forge;
 
 public class ForgeInstallerConfig {
     private String gameVer;

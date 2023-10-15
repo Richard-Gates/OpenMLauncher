@@ -1,5 +1,4 @@
-import cn.goindog.OpenMLauncher.account.Microsoft.MicrosoftController;
-import cn.goindog.OpenMLauncher.game.VanillaController;
+import cn.goindog.OpenMLauncher.game.Vanilla.VanillaController;
 
 import java.io.IOException;
 
