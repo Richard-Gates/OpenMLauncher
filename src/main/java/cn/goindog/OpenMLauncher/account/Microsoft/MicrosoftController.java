@@ -6,8 +6,10 @@ import com.google.gson.JsonObject;
 import com.sun.net.httpserver.HttpServer;
 import org.apache.commons.io.FileUtils;
 
+import java.beans.EventHandler;
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.*;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -15,8 +17,11 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class MicrosoftController {
+    private static final String device_code_get_url = "https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode";
+    private static final String device_method_token_get_url = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token";
     private static final String live_service_url = "https://login.live.com/oauth20_authorize.srf?client_id=8073fcb7-1de0-4440-b6d3-62f8407bd5dc&scope=XboxLive.signin&response_type=code";
     private static final String code_to_token_url = "https://login.live.com/oauth20_token.srf";
     private static final String xbl_url = "https://user.auth.xboxlive.com/user/authenticate";
@@ -24,6 +29,7 @@ public class MicrosoftController {
     private static final String Minecraft_Authenticate_Url = "https://api.minecraftservices.com/authentication/login_with_xbox";
     private static final String Check_Url = "https://api.minecraftservices.com/entitlements/mcstore";
     private static final String get_profile_url = "https://api.minecraftservices.com/minecraft/profile";
+    private static Thread getTokenThread = null;
     private static final HttpServer server;
     private static String refresh_token = "";
 
@@ -35,17 +41,17 @@ public class MicrosoftController {
         }
     }
 
-    public MicrosoftController() throws IOException {
+    public void build(MicrosoftOAuthOptions options){
+        switch (options.getType()) {
+            case DEVICE -> DeviceGet();
+            case AUTHORIZATION_CODE -> GetCode(options.getMethod());
+        }
     }
 
-    public void AddAccount() throws IOException {
-        GetCode();
-    }
 
-    private static void GetCode() throws IOException {
+    private void GetCode(MicrosoftOAuthCodeMethod method) {
         final String[] code = {""};
         server.createContext("/", exchange -> {
-            code[0] = exchange.getRequestURI().getQuery().replaceFirst("code=", "");
             exchange.setAttribute("Content-Type", "text/html");
             String response = """
                     <script>
@@ -53,21 +59,116 @@ public class MicrosoftController {
                     </script>
                     """;
             exchange.sendResponseHeaders(200, response.length());
-            exchange.getResponseBody().write(response.getBytes());
-            exchange.getResponseBody().flush();
-            exchange.getResponseBody().close();
+            OutputStream rb = exchange.getResponseBody();
+            rb.write(response.getBytes());
+            rb.close();
+            code[0] = exchange.getRequestURI().getQuery().replaceFirst("code=", "");
             CodeToToken(code);
+            server.stop(0);
         });
         server.start();
-        java.awt.Desktop.getDesktop().browse(URI.create(live_service_url));
+        method.GetMSCode(
+                URI.create(live_service_url)
+        );
         System.out.println("[INFO]Getting Microsoft Account Code");
     }
 
-    private static void CodeToToken(String[] code) {
+    private void DeviceGet() {
+        Map<Object, Object> device_data = Map.of(
+                "client_id", "8073fcb7-1de0-4440-b6d3-62f8407bd5dc",
+                "scope", "XboxLive.signin offline_access",
+                "response_type", "code"
+        );
+        HttpRequest deviceRequest = HttpRequest.newBuilder(
+                URI.create(device_code_get_url)
+        ).header(
+                "Content-Type", "application/x-www-form-urlencoded"
+        ).POST(
+                ofFormData(device_data)
+        ).build();
+        HttpClient.newBuilder().build().sendAsync(deviceRequest, HttpResponse.BodyHandlers.ofString()).thenAccept(resp -> {
+            if (resp.statusCode() == HttpURLConnection.HTTP_OK) {
+                String body = resp.body();
+                JsonObject response_obj = new Gson().fromJson(body, JsonObject.class);
+                String user_code = response_obj.get("user_code").getAsString();
+                String device_code = response_obj.get("device_code").getAsString();
+                URI signUri = URI.create(
+                        response_obj.get("verification_uri").getAsString()
+                );
+                try {
+                    java.awt.Desktop.getDesktop().browse(signUri);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+                int interval = response_obj.get("interval").getAsInt();
+
+
+                getTokenThread = new Thread(() -> {
+                    try {
+                        this.wait(interval);
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                    Map<Object, Object> device_getToken_data = Map.of(
+                            "client_id", "8073fcb7-1de0-4440-b6d3-62f8407bd5dc",
+                            "scope", "XboxLive.signin offline_access",
+                            "grant_type", "urn:ietf:params:oauth:grant-type:device_code",
+                            "code", device_code
+                    );
+                    HttpRequest device_getToken_Request = HttpRequest.newBuilder(
+                            URI.create(device_method_token_get_url)
+                    ).header(
+                            "Content-Type", "application/x-www-form-urlencoded"
+                    ).POST(
+                            ofFormData(device_getToken_data)
+                    ).build();
+                    HttpClient.newBuilder().build().sendAsync(device_getToken_Request, HttpResponse.BodyHandlers.ofString()).thenAccept(response -> {
+                        if (response.statusCode() == HttpURLConnection.HTTP_OK) {
+                            String resp_body = response.body();
+                            JsonObject resp_obj = new Gson().fromJson(resp_body, JsonObject.class);
+                            if (resp_obj.has("error")) {
+                                String errorStatement = resp_obj.get("error").getAsString();
+                                switch (errorStatement) {
+                                    case "authorization_pending": {
+                                        try {
+                                            getTokenThread.wait(interval);
+                                            getTokenThread.interrupt();
+                                            getTokenThread.start();
+                                        } catch (InterruptedException e) {
+                                            throw new RuntimeException(e);
+                                        }
+                                    }
+                                    case "bad_verification_code": {
+                                        System.out.println("Bad Authorization: \"bad_verification_code\"");
+                                    }
+                                    case "authorization_declined":
+                                    case "expired_token": {
+                                        System.out.println("Bad Authorization: \"authorization_declined\" or \"expired_token\"");
+                                    }
+                                }
+                            } else {
+                                refresh_token = response_obj.get("refresh_token").getAsString();
+                                XblAuthenticate(
+                                        response_obj.get("access_token").getAsString()
+                                );
+                            }
+                        } else {
+                            System.out.println("Bad Connection:" + response.statusCode());
+                        }
+                    });
+                });
+                getTokenThread.start();
+            } else {
+                System.out.println("Bad Connection:" + resp.statusCode());
+            }
+        });
+    }
+
+    private void CodeToToken(String[] code) {
         System.out.println("[INFO]Get Microsoft Account Code Complete");
         System.out.println("[INFO]Getting Microsoft Account Token");
         Map<Object, Object> c_t_t_data = Map.of(
-                "client_id", "8073fcb7-1de0-4440-b6d3-62f8407bd5dc",
+                "client_id", "",
                 "code", code[0],
                 "scope", "XboxLive.signin",
                 "grant_type", "authorization_code"
@@ -88,7 +189,7 @@ public class MicrosoftController {
         });
     }
 
-    private static void XblAuthenticate(String ms_token) {
+    private void XblAuthenticate(String ms_token) {
         System.out.println("[INFO]Get Microsoft Account Token Complete");
         System.out.println("[INFO]Getting XBox Live Token & UserHash");
         Map<Object, Object> xbl_dat = Map.of(
@@ -122,7 +223,7 @@ public class MicrosoftController {
         });
     }
 
-    private static void XstsAuthenticate(String XblToken, String XblUhs) throws URISyntaxException {
+    private void XstsAuthenticate(String XblToken, String XblUhs) throws URISyntaxException {
         System.out.println("[INFO]Get XBox Live Token & UserHash Complete");
         System.out.println("[INFO]Getting XSTS Token & UserHash");
         Map<Object, Object> dat = Map.of(
@@ -150,7 +251,7 @@ public class MicrosoftController {
         });
     }
 
-    private static void MinecraftAuthenticate(String XSTSToken, String UHS) {
+    private void MinecraftAuthenticate(String XSTSToken, String UHS) {
         System.out.println("[INFO]Get XSTS Token & UserHash Complete");
         System.out.println("[INFO]Getting Minecraft Account Token & UUID");
         Map<Object, Object> dat = Map.of(
@@ -171,7 +272,7 @@ public class MicrosoftController {
         });
     }
 
-    private static void CheckHaveMinecraft(String MinecraftToken) {
+    private void CheckHaveMinecraft(String MinecraftToken) {
         System.out.println("[INFO]Get Minecraft Account Token & UUID Complete");
         System.out.println("[INFO]Checking Minecraft Possession");
         HttpRequest request = HttpRequest.newBuilder(URI.create(Check_Url))
@@ -198,7 +299,7 @@ public class MicrosoftController {
         });
     }
 
-    private static void GetProfile(String MinecraftToken) throws InterruptedException {
+    private void GetProfile(String MinecraftToken) throws InterruptedException {
         System.out.println("[INFO]Check Minecraft Possession Complete");
         System.out.println("[INFO]very good! You own Minecraft! Login is now complete, I wish you a happy playing!");
         HttpRequest request = HttpRequest.newBuilder(URI.create(get_profile_url))
@@ -222,8 +323,8 @@ public class MicrosoftController {
                     JsonObject config_obj = new Gson().fromJson(user_config_str, JsonObject.class);
                     JsonObject new_arr_obj = new Gson().fromJson("{}", JsonObject.class);
                     new_arr_obj.addProperty("type", "microsoft");
-                    resp_obj.addProperty("token", MinecraftToken);
-                    resp_obj.addProperty("refresh_token", refresh_token);
+                    resp_obj.addProperty("minecraft_token", MinecraftToken);
+                    resp_obj.addProperty("microsoft_refresh_token", refresh_token);
                     new_arr_obj.add("profile", resp_obj);
                     if (config_obj.has("users")) {
                         for (int i = 0; i < config_obj.get("users").getAsJsonArray().size(); i++) {
@@ -246,9 +347,9 @@ public class MicrosoftController {
                         JsonArray arr = new Gson().fromJson("[]", JsonArray.class);
                         arr.add(new_arr_obj);
                         config_obj.add("users", arr);
+                        config_obj.addProperty("selector", 0);
                         FileUtils.writeStringToFile(user_config_file, config_obj.toString(), "utf-8");
                     }
-                    server.stop(0);
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
