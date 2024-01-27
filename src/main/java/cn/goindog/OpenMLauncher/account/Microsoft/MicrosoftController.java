@@ -1,12 +1,12 @@
 package cn.goindog.OpenMLauncher.account.Microsoft;
 
+import cn.hutool.http.Header;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.sun.net.httpserver.HttpServer;
 import org.apache.commons.io.FileUtils;
 
-import java.beans.EventHandler;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -18,6 +18,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class MicrosoftController {
     private static final String device_code_get_url = "https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode";
@@ -29,7 +30,6 @@ public class MicrosoftController {
     private static final String Minecraft_Authenticate_Url = "https://api.minecraftservices.com/authentication/login_with_xbox";
     private static final String Check_Url = "https://api.minecraftservices.com/entitlements/mcstore";
     private static final String get_profile_url = "https://api.minecraftservices.com/minecraft/profile";
-    private static Thread getTokenThread = null;
     private static final HttpServer server;
     private static String refresh_token = "";
 
@@ -41,13 +41,68 @@ public class MicrosoftController {
         }
     }
 
-    public void build(MicrosoftOAuthOptions options){
+    public void build(MicrosoftOAuthOptions options) {
         switch (options.getType()) {
-            case DEVICE -> DeviceGet();
-            case AUTHORIZATION_CODE -> GetCode(options.getMethod());
+            case DEVICE -> {
+                System.out.println("[INFO]Microsoft Login Method:Device Code Flow");
+                DeviceGet(options.getScopes());
+            }
+            case AUTHORIZATION_CODE -> {
+                System.out.println("[INFO]Microsoft Login Method:Authorization Code Flow");
+                GetCode(options.getMethod());
+            }
         }
     }
 
+    private void DeviceGet(String[] scopes) {
+        String scopes_str = String.join(" backspace ", scopes);
+        System.out.println("[INFO]Microsoft Login Scopes:" + scopes_str);
+        Map<Object, Object> device_data = Map.of(
+                "client_id", "8073fcb7-1de0-4440-b6d3-62f8407bd5dc",
+                "scope", scopes_str
+        );
+        String body = "";
+        JsonObject response_obj = new Gson().fromJson(body, JsonObject.class);
+
+        String user_code = response_obj.get("user_code").getAsString();
+        System.out.println("[INFO]Microsoft Login User Code:" + user_code);
+
+        String device_code = response_obj.get("device_code").getAsString();
+
+        URI signUri = URI.create(
+                response_obj.get("verification_uri").getAsString()
+        );
+
+        System.out.println("[INFO]Microsoft Login Thread is being browsed");
+        try {
+            java.awt.Desktop.getDesktop().browse(signUri);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        int interval = response_obj.get("interval").getAsInt();
+
+        DeviceCodeToToken(scopes, device_code, interval);
+    }
+
+    private void DeviceCodeToToken(String[] scopes, String device_code, int interval) {
+        String scopes_str = String.join(" backspace ", scopes);
+
+        Map<Object, Object> data = Map.of(
+                "client_id", "8073fcb7-1de0-4440-b6d3-62f8407bd5dc",
+                "grant_type", "urn:ietf:params:oauth:grant-type:device_code",
+                "scope", scopes_str,
+                "code", device_code
+        );
+
+        HttpRequest request = HttpRequest.newBuilder(
+                URI.create(device_method_token_get_url)
+        ).header(
+                "Content-Type", "application/x-www-form-urlencoded"
+        ).POST(
+                ofFormData(data)
+        ).build();
+    }
 
     private void GetCode(MicrosoftOAuthCodeMethod method) {
         final String[] code = {""};
@@ -71,97 +126,6 @@ public class MicrosoftController {
                 URI.create(live_service_url)
         );
         System.out.println("[INFO]Getting Microsoft Account Code");
-    }
-
-    private void DeviceGet() {
-        Map<Object, Object> device_data = Map.of(
-                "client_id", "8073fcb7-1de0-4440-b6d3-62f8407bd5dc",
-                "scope", "XboxLive.signin offline_access",
-                "response_type", "code"
-        );
-        HttpRequest deviceRequest = HttpRequest.newBuilder(
-                URI.create(device_code_get_url)
-        ).header(
-                "Content-Type", "application/x-www-form-urlencoded"
-        ).POST(
-                ofFormData(device_data)
-        ).build();
-        HttpClient.newBuilder().build().sendAsync(deviceRequest, HttpResponse.BodyHandlers.ofString()).thenAccept(resp -> {
-            if (resp.statusCode() == HttpURLConnection.HTTP_OK) {
-                String body = resp.body();
-                JsonObject response_obj = new Gson().fromJson(body, JsonObject.class);
-                String user_code = response_obj.get("user_code").getAsString();
-                String device_code = response_obj.get("device_code").getAsString();
-                URI signUri = URI.create(
-                        response_obj.get("verification_uri").getAsString()
-                );
-                try {
-                    java.awt.Desktop.getDesktop().browse(signUri);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-                int interval = response_obj.get("interval").getAsInt();
-
-
-                getTokenThread = new Thread(() -> {
-                    try {
-                        this.wait(interval);
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
-                    Map<Object, Object> device_getToken_data = Map.of(
-                            "client_id", "8073fcb7-1de0-4440-b6d3-62f8407bd5dc",
-                            "scope", "XboxLive.signin offline_access",
-                            "grant_type", "urn:ietf:params:oauth:grant-type:device_code",
-                            "code", device_code
-                    );
-                    HttpRequest device_getToken_Request = HttpRequest.newBuilder(
-                            URI.create(device_method_token_get_url)
-                    ).header(
-                            "Content-Type", "application/x-www-form-urlencoded"
-                    ).POST(
-                            ofFormData(device_getToken_data)
-                    ).build();
-                    HttpClient.newBuilder().build().sendAsync(device_getToken_Request, HttpResponse.BodyHandlers.ofString()).thenAccept(response -> {
-                        if (response.statusCode() == HttpURLConnection.HTTP_OK) {
-                            String resp_body = response.body();
-                            JsonObject resp_obj = new Gson().fromJson(resp_body, JsonObject.class);
-                            if (resp_obj.has("error")) {
-                                String errorStatement = resp_obj.get("error").getAsString();
-                                switch (errorStatement) {
-                                    case "authorization_pending": {
-                                        try {
-                                            getTokenThread.wait(interval);
-                                            getTokenThread.interrupt();
-                                            getTokenThread.start();
-                                        } catch (InterruptedException e) {
-                                            throw new RuntimeException(e);
-                                        }
-                                    }
-                                    case "bad_verification_code": {
-                                        System.out.println("Bad Authorization: \"bad_verification_code\"");
-                                    }
-                                    case "authorization_declined":
-                                    case "expired_token": {
-                                        System.out.println("Bad Authorization: \"authorization_declined\" or \"expired_token\"");
-                                    }
-                                }
-                            } else {
-                                refresh_token = response_obj.get("refresh_token").getAsString();
-                                XblAuthenticate(
-                                        response_obj.get("access_token").getAsString()
-                                );
-                            }
-                        } else {
-                            System.out.println("Bad Connection:" + response.statusCode());
-                        }
-                    });
-                });
-                getTokenThread.start();
-            } else {
-                System.out.println("Bad Connection:" + resp.statusCode());
-            }
-        });
     }
 
     private void CodeToToken(String[] code) {
@@ -372,8 +336,21 @@ public class MicrosoftController {
             }
             builder.append(URLEncoder.encode(entry.getKey().toString(), StandardCharsets.UTF_8));
             builder.append("=");
-            builder.append(URLEncoder.encode(entry.getValue().toString(), StandardCharsets.UTF_8));
+            builder.append(URLEncoder.encode(entry.getValue().toString().replace(" backspace ", " "), StandardCharsets.UTF_8));
         }
         return HttpRequest.BodyPublishers.ofString(builder.toString());
+    }
+
+    public static String ofFormDataToString(Map<Object, Object> data) {
+        StringBuilder builder = new StringBuilder();
+        for (Map.Entry<Object, Object> entry : data.entrySet()) {
+            if (builder.length() > 0) {
+                builder.append("&");
+            }
+            builder.append(URLEncoder.encode(entry.getKey().toString(), StandardCharsets.UTF_8));
+            builder.append("=");
+            builder.append(URLEncoder.encode(entry.getValue().toString(), StandardCharsets.UTF_8));
+        }
+        return builder.toString();
     }
 }
