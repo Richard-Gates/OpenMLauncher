@@ -1,8 +1,6 @@
 package cn.goindog.openmlauncher.test;
 
-import cn.goindog.OpenMLauncher.account.Microsoft.MicrosoftController;
-import cn.goindog.OpenMLauncher.account.Microsoft.MicrosoftOAuthOptions;
-import cn.goindog.OpenMLauncher.account.Microsoft.MicrosoftOAuthType;
+import cn.goindog.OpenMLauncher.account.Microsoft.*;
 
 public class NewMicrosoftControllerTest {
     public static void main(String[] args) {

@@ -5,22 +5,27 @@ import cn.goindog.OpenMLauncher.events.OAuthEvents.OAuthFinishEventObject;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import org.apache.commons.httpclient.HttpClient;
-import org.apache.commons.httpclient.methods.*;
 import org.apache.commons.io.FileUtils;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.HttpURLConnection;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
-public class MicrosoftController {
+public class OldMicrosoftController {
     private static final String xbl_url = "https://user.auth.xboxlive.com/user/authenticate";
     private static final String xsts_url = "https://xsts.auth.xboxlive.com/xsts/authorize";
     private static final String Minecraft_Authenticate_Url = "https://api.minecraftservices.com/authentication/login_with_xbox";
     private static final String Check_Url = "https://api.minecraftservices.com/entitlements/mcstore";
     private static final String get_profile_url = "https://api.minecraftservices.com/minecraft/profile";
-    private static String refresh_token = "";
+    private static final String refresh_token = "";
     private Collection listeners;
 
     public void addOAuthFinishListener(OAuthFinishEventListener listener) {
@@ -35,17 +40,16 @@ public class MicrosoftController {
             return;
         listeners.remove(listener);
     }
-
-    protected void fireWorkspaceStarted() {
+        protected void fireWorkspaceStarted() {
         if (listeners == null)
             return;
         OAuthFinishEventObject event = new OAuthFinishEventObject(this);
         notifyListeners(event);
     }
-
     private void notifyListeners(OAuthFinishEventObject event) {
-        for (Object o : listeners) {
-            OAuthFinishEventListener listener = (OAuthFinishEventListener) o;
+        Iterator iter = listeners.iterator();
+        while (iter.hasNext()) {
+            OAuthFinishEventListener listener = (OAuthFinishEventListener) iter.next();
             try {
                 listener.OAuthFinishEvent(event);
             } catch (IOException e) {
@@ -74,166 +78,131 @@ public class MicrosoftController {
                 methods.addOAuthFinishListener(event -> {
                     JsonObject returnObj = methods.getObject();
                     String access_token = returnObj.get("access_token").getAsString();
-                    refresh_token = returnObj.get("refresh_token").getAsString();
                     XblAuthenticate(access_token);
                 });
             }
         }
     }
 
-    private void XblAuthenticate(String accessToken) throws IOException {
+    private void XblAuthenticate(String ms_token) {
         System.out.println("[INFO]Get Microsoft Account Token Complete");
         System.out.println("[INFO]Getting XBox Live Token & UserHash");
-
-        HttpClient client = new HttpClient();
-        PostMethod method = new PostMethod(xbl_url);
-        method.addRequestHeader("Content-Type", "application/json");
-        method.addRequestHeader("Accept", "application/json");
-
-        RequestEntity entity = new ByteArrayRequestEntity(
-                (
-                        """
-                                {
-                                    "Properties": {
-                                        "AuthMethod": "RPS",
-                                        "SiteName": "user.auth.xboxlive.com",
-                                        "RpsTicket": "d=""" + accessToken + """
-                                    "},
-                                    "RelyingParty": "http://auth.xboxlive.com",
-                                    "TokenType": "JWT"
-                                }
-                                """
-                ).getBytes()
+        Map<Object, Object> xbl_dat = Map.of(
+                "Properties", Map.of(
+                        "AuthMethod", "RPS",
+                        "SiteName", "user.auth.xboxlive.com",
+                        "RpsTicket", "d=" + ms_token
+                ),
+                "RelyingParty", "http://auth.xboxlive.com",
+                "TokenType", "JWT"
         );
-        method.setRequestEntity(entity);
-
-        int code = client.executeMethod(method);
-
-        if (code == HttpURLConnection.HTTP_OK) {
-            String xbl_body = method.getResponseBodyAsString();
-
-            JsonObject xbl_resp_obj = new Gson().fromJson(xbl_body, JsonObject.class);
-            String xbl_token = xbl_resp_obj.get("Token").getAsString();
-            XstsAuthenticate(xbl_token);
-        } else {
-            System.out.println("Bad Connection:" + code);
-        }
+        HttpRequest xbl_req = HttpRequest.newBuilder(URI.create(xbl_url))
+                .header("Content-Type", "application/json")
+                .header("Accept", "application/json")
+                .POST(ofJsonData(xbl_dat))
+                .build();
+        HttpClient.newBuilder().build().sendAsync(xbl_req, HttpResponse.BodyHandlers.ofString()).thenAccept(xbl_resp -> {
+            if (xbl_resp.statusCode() == HttpURLConnection.HTTP_OK) {
+                String xbl_body = xbl_resp.body();
+                JsonObject xbl_resp_obj = new Gson().fromJson(xbl_body, JsonObject.class);
+                String xbl_token = xbl_resp_obj.get("Token").getAsString();
+                try {
+                    XstsAuthenticate(xbl_token);
+                } catch (URISyntaxException e) {
+                    throw new RuntimeException(e);
+                }
+            } else {
+                System.out.println("Bad Connection:" + xbl_resp.statusCode());
+            }
+        });
     }
 
-    private void XstsAuthenticate(String XblToken) {
+    private void XstsAuthenticate(String XblToken) throws URISyntaxException {
         System.out.println("[INFO]Get XBox Live Token & UserHash Complete");
         System.out.println("[INFO]Getting XSTS Token & UserHash");
-        JsonObject data = new Gson().fromJson("""
-                                                      {
-                                                          "Properties": {
-                                                              "SandboxId": "RETAIL",
-                                                              "UserTokens":""" + List.of(XblToken) + """
-                                                          },
-                                                          "RelyingParty": "rp://api.minecraftservices.com/",
-                                                          "TokenType": "JWT"
-                                                      }
-                                                      """, JsonObject.class);
-
-        HttpClient client = new HttpClient();
-        PostMethod method = new PostMethod(xsts_url);
-        method.addRequestHeader("Content-Type", "application/json");
-        method.addRequestHeader("Accept", "application/json");
-
-        try {
-            RequestEntity entity = new StringRequestEntity(data.toString(), "application/json", "UTF-8");
-            method.setRequestEntity(entity);
-
-            int code = client.executeMethod(method);
-
-            if (code == HttpURLConnection.HTTP_OK) {
-                String xsts_body = method.getResponseBodyAsString();
-
-                JsonObject xsts_resp_obj = new Gson().fromJson(xsts_body, JsonObject.class);
-                String xsts_token = xsts_resp_obj.get("Token").getAsString();
-                String xsts_uhs = xsts_resp_obj.get("DisplayClaims").getAsJsonObject().get("xui").getAsJsonArray().get(0).getAsJsonObject().get("uhs").getAsString();
+        Map<Object, Object> dat = Map.of(
+                "Properties", Map.of(
+                        "SandboxId", "RETAIL",
+                        "UserTokens", List.of(XblToken)
+                ),
+                "RelyingParty", "rp://api.minecraftservices.com/",
+                "TokenType", "JWT"
+        );
+        HttpRequest request = HttpRequest.newBuilder(URI.create(xsts_url))
+                .header("Content-Type", "application/json")
+                .header("Accept", "application/json")
+                .POST(ofJsonData(dat)).build();
+        HttpClient.newBuilder().build().sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenAccept(resp -> {
+            if (resp.statusCode() == HttpURLConnection.HTTP_OK) {
+                String body = resp.body();
+                JsonObject resp_obj = new Gson().fromJson(body, JsonObject.class);
+                String xsts_token = resp_obj.get("Token").getAsString();
+                String xsts_uhs = resp_obj.get("DisplayClaims").getAsJsonObject().get("xui").getAsJsonArray().get(0).getAsJsonObject().get("uhs").getAsString();
                 MinecraftAuthenticate(xsts_token, xsts_uhs);
             } else {
-                System.out.println("Bad Connection:" + code);
+                System.out.println("Bad Connection:" + resp.statusCode());
             }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        });
     }
 
     private void MinecraftAuthenticate(String XSTSToken, String UHS) {
         System.out.println("[INFO]Get XSTS Token & UserHash Complete");
         System.out.println("[INFO]Getting Minecraft Account Token & UUID");
-
-        JsonObject data = new Gson().fromJson("""
-                                                      {
-                                                          "identityToken": "XBL3.0 x=""" + UHS + ";" + XSTSToken +
-                                              """
-                                                      "
-                                                      }
-                                                      """, JsonObject.class);
-
-        HttpClient client = new HttpClient();
-        PostMethod method = new PostMethod(Minecraft_Authenticate_Url);
-
-        try {
-            RequestEntity entity = new StringRequestEntity(data.toString(), "application/json", "UTF-8");
-            method.setRequestEntity(entity);
-
-            int code = client.executeMethod(method);
-
-            if (code == HttpURLConnection.HTTP_OK) {
-                String mc_auth_body = method.getResponseBodyAsString();
-
-                JsonObject mc_auth_obj = new Gson().fromJson(mc_auth_body, JsonObject.class);
-                String mc_token = mc_auth_obj.get("access_token").getAsString();
+        Map<Object, Object> dat = Map.of(
+                "identityToken", "XBL3.0 x=" + UHS + ";" + XSTSToken
+        );
+        HttpRequest request = HttpRequest.newBuilder(URI.create(Minecraft_Authenticate_Url))
+                .POST(ofJsonData(dat))
+                .build();
+        HttpClient.newBuilder().build().sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenAccept(resp -> {
+            if (resp.statusCode() == HttpURLConnection.HTTP_OK) {
+                String body = resp.body();
+                JsonObject resp_obj = new Gson().fromJson(body, JsonObject.class);
+                String mc_token = resp_obj.get("access_token").getAsString();
                 CheckHaveMinecraft(mc_token);
             } else {
-                System.out.println("Bad Connection:" + code);
+                System.out.println("Bad Connection:" + resp.statusCode());
             }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        });
     }
 
     private void CheckHaveMinecraft(String MinecraftToken) {
         System.out.println("[INFO]Get Minecraft Account Token & UUID Complete");
         System.out.println("[INFO]Checking Minecraft Possession");
-
-        HttpClient client = new HttpClient();
-        GetMethod method = new GetMethod(Check_Url);
-        method.addRequestHeader("Authorization", "Bearer " + MinecraftToken);
-
-        try {
-            int code = client.executeMethod(method);
-
-            if (code == HttpURLConnection.HTTP_OK) {
-                String body = method.getResponseBodyAsString();
+        HttpRequest request = HttpRequest.newBuilder(URI.create(Check_Url))
+                .header("Authorization", "Bearer " + MinecraftToken)
+                .GET()
+                .build();
+        HttpClient.newBuilder().build().sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenAccept(resp -> {
+            if (resp.statusCode() == HttpURLConnection.HTTP_OK) {
+                String body = resp.body();
                 JsonObject resp_obj = new Gson().fromJson(body, JsonObject.class);
                 if (resp_obj.has("items")) {
-                    GetProfile(MinecraftToken);
+                    try {
+                        GetProfile(MinecraftToken);
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
                 } else {
                     System.out.println("[WARN]Failed to complete the login!");
                     System.out.println("[ERROR]Sorry, your Microsoft account does not have Minecraft, failed to complete the login!");
                 }
+            } else {
+                System.out.println("Bad Connection:" + resp.statusCode());
             }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        });
     }
 
-    private void GetProfile(String MinecraftToken) {
+    private void GetProfile(String MinecraftToken) throws InterruptedException {
         System.out.println("[INFO]Check Minecraft Possession Complete");
         System.out.println("[INFO]very good! You own Minecraft! Login is now complete, I wish you a happy playing!");
-
-        HttpClient client = new HttpClient();
-        GetMethod method = new GetMethod(get_profile_url);
-        method.addRequestHeader("Authorization", "Bearer " + MinecraftToken);
-
-        try {
-            int code = client.executeMethod(method);
-
-            if (code == HttpURLConnection.HTTP_OK) {
-                String body = method.getResponseBodyAsString();
+        HttpRequest request = HttpRequest.newBuilder(URI.create(get_profile_url))
+                .header("Authorization", "Bearer " + MinecraftToken)
+                .GET()
+                .build();
+        HttpClient.newBuilder().build().sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenAccept(resp -> {
+            if (resp.statusCode() == HttpURLConnection.HTTP_OK) {
+                String body = resp.body();
                 JsonObject resp_obj = new Gson().fromJson(body, JsonObject.class);
                 File user_config_file = new File(System.getProperty("user.dir") + "/.openmlauncher/user.json");
                 try {
@@ -279,11 +248,28 @@ public class MicrosoftController {
                     throw new RuntimeException(e);
                 }
             } else {
-                System.out.println("Bad Connection:" + code);
+                System.out.println("Bad Connection:" + resp.statusCode());
             }
-            fireWorkspaceStarted();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        });
+        fireWorkspaceStarted();
     }
+
+    public static HttpRequest.BodyPublisher ofJsonData(Map<Object, Object> dat) {
+        String str = new Gson().fromJson(new Gson().toJson(dat), JsonObject.class).toString();
+        return HttpRequest.BodyPublishers.ofString(str);
+    }
+
+    public static HttpRequest.BodyPublisher ofFormData(Map<Object, Object> data) {
+        StringBuilder builder = new StringBuilder();
+        for (Map.Entry<Object, Object> entry : data.entrySet()) {
+            if (!builder.isEmpty()) {
+                builder.append("&");
+            }
+            builder.append(URLEncoder.encode(entry.getKey().toString(), StandardCharsets.UTF_8));
+            builder.append("=");
+            builder.append(URLEncoder.encode(entry.getValue().toString().replace(" backspace ", " "), StandardCharsets.UTF_8));
+        }
+        return HttpRequest.BodyPublishers.ofString(builder.toString());
+    }
+
 }
