@@ -1,7 +1,7 @@
 package cn.goindog.OpenMLauncher.account.Microsoft;
 
 import cn.goindog.OpenMLauncher.events.OAuthEvents.OAuthFinishEventListener;
-import cn.goindog.OpenMLauncher.events.OAuthEvents.OAuthFinishEventObject;
+import cn.goindog.OpenMLauncher.events.OAuthEvents.OAuthFinishEvent;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.sun.net.httpserver.HttpServer;
@@ -33,7 +33,6 @@ public class MicrosoftOAuthAuthorizationCodeMethods {
     private static final String code_to_token_url = "https://login.live.com/oauth20_token.srf";
 
     private final JsonObject object = new JsonObject();
-
     private Collection listeners;
 
     public void addOAuthFinishListener(OAuthFinishEventListener listener) {
@@ -48,21 +47,18 @@ public class MicrosoftOAuthAuthorizationCodeMethods {
             return;
         listeners.remove(listener);
     }
-    protected void fireWorkspaceStarted() {
+
+    protected void fireWorkspaceStarted(String type) {
         if (listeners == null)
             return;
-        OAuthFinishEventObject event = new OAuthFinishEventObject(this);
+        OAuthFinishEvent event = new OAuthFinishEvent(this, type);
         notifyListeners(event);
     }
-    private void notifyListeners(OAuthFinishEventObject event) {
-        Iterator iter = listeners.iterator();
-        while (iter.hasNext()) {
-            OAuthFinishEventListener listener = (OAuthFinishEventListener) iter.next();
-            try {
-                listener.OAuthFinishEvent(event);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+
+    private void notifyListeners(OAuthFinishEvent event) {
+        for (Object o : listeners) {
+            OAuthFinishEventListener listener = (OAuthFinishEventListener) o;
+            listener.OAuthFinishEvent(event);
         }
     }
 
@@ -121,7 +117,12 @@ public class MicrosoftOAuthAuthorizationCodeMethods {
 
             object.addProperty("access_token", access_token);
 
-            fireWorkspaceStarted();
+            if (response_obj.has("refresh_token")) {
+                object.addProperty("refresh_token", response_obj.get("refresh_token").getAsString());
+            }
+
+            System.out.println("[INFO]Get Microsoft Account Token Complete");
+            fireWorkspaceStarted("OAuthFinish");
         } else {
             System.out.println("Bad Connection:" + resp_code);
         }

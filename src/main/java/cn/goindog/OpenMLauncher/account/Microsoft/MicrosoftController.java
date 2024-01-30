@@ -1,7 +1,7 @@
 package cn.goindog.OpenMLauncher.account.Microsoft;
 
 import cn.goindog.OpenMLauncher.events.OAuthEvents.OAuthFinishEventListener;
-import cn.goindog.OpenMLauncher.events.OAuthEvents.OAuthFinishEventObject;
+import cn.goindog.OpenMLauncher.events.OAuthEvents.OAuthFinishEvent;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -36,21 +36,17 @@ public class MicrosoftController {
         listeners.remove(listener);
     }
 
-    protected void fireWorkspaceStarted() {
+    protected void fireWorkspaceStarted(String type) {
         if (listeners == null)
             return;
-        OAuthFinishEventObject event = new OAuthFinishEventObject(this);
+        OAuthFinishEvent event = new OAuthFinishEvent(this, type);
         notifyListeners(event);
     }
 
-    private void notifyListeners(OAuthFinishEventObject event) {
+    private void notifyListeners(OAuthFinishEvent event) {
         for (Object o : listeners) {
             OAuthFinishEventListener listener = (OAuthFinishEventListener) o;
-            try {
-                listener.OAuthFinishEvent(event);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+            listener.OAuthFinishEvent(event);
         }
     }
 
@@ -60,12 +56,19 @@ public class MicrosoftController {
             case DEVICE -> {
                 System.out.println("[INFO]Microsoft Login Method:Device Code Flow");
                 MicrosoftOAuthDeviceFlowMethods methods = new MicrosoftOAuthDeviceFlowMethods();
-                methods.build(options.getScopes());
                 methods.addOAuthFinishListener(event -> {
                     JsonObject returnObj = methods.getObject();
                     String access_token = returnObj.get("access_token").getAsString();
-                    XblAuthenticate(access_token);
+                    if (returnObj.has("refresh_token")) {
+                        refresh_token = returnObj.get("refresh_token").getAsString();
+                    }
+                    try {
+                        XblAuthenticate(access_token);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
                 });
+                methods.build(options.getScopes());
             }
             case AUTHORIZATION_CODE -> {
                 System.out.println("[INFO]Microsoft Login Method:Authorization Code Flow");
@@ -74,15 +77,20 @@ public class MicrosoftController {
                 methods.addOAuthFinishListener(event -> {
                     JsonObject returnObj = methods.getObject();
                     String access_token = returnObj.get("access_token").getAsString();
-                    refresh_token = returnObj.get("refresh_token").getAsString();
-                    XblAuthenticate(access_token);
+                    if (returnObj.has("refresh_token")) {
+                        refresh_token = returnObj.get("refresh_token").getAsString();
+                    }
+                    try {
+                        XblAuthenticate(access_token);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
                 });
             }
         }
     }
 
     private void XblAuthenticate(String accessToken) throws IOException {
-        System.out.println("[INFO]Get Microsoft Account Token Complete");
         System.out.println("[INFO]Getting XBox Live Token & UserHash");
 
         HttpClient client = new HttpClient();
@@ -114,6 +122,7 @@ public class MicrosoftController {
 
             JsonObject xbl_resp_obj = new Gson().fromJson(xbl_body, JsonObject.class);
             String xbl_token = xbl_resp_obj.get("Token").getAsString();
+            System.out.println("[INFO]Get XBox Live Token & UserHash Complete");
             XstsAuthenticate(xbl_token);
         } else {
             System.out.println("Bad Connection:" + code);
@@ -121,7 +130,6 @@ public class MicrosoftController {
     }
 
     private void XstsAuthenticate(String XblToken) {
-        System.out.println("[INFO]Get XBox Live Token & UserHash Complete");
         System.out.println("[INFO]Getting XSTS Token & UserHash");
         JsonObject data = new Gson().fromJson("""
                                                       {
@@ -151,6 +159,7 @@ public class MicrosoftController {
                 JsonObject xsts_resp_obj = new Gson().fromJson(xsts_body, JsonObject.class);
                 String xsts_token = xsts_resp_obj.get("Token").getAsString();
                 String xsts_uhs = xsts_resp_obj.get("DisplayClaims").getAsJsonObject().get("xui").getAsJsonArray().get(0).getAsJsonObject().get("uhs").getAsString();
+                System.out.println("[INFO]Get XSTS Token & UserHash Complete");
                 MinecraftAuthenticate(xsts_token, xsts_uhs);
             } else {
                 System.out.println("Bad Connection:" + code);
@@ -161,7 +170,6 @@ public class MicrosoftController {
     }
 
     private void MinecraftAuthenticate(String XSTSToken, String UHS) {
-        System.out.println("[INFO]Get XSTS Token & UserHash Complete");
         System.out.println("[INFO]Getting Minecraft Account Token & UUID");
 
         JsonObject data = new Gson().fromJson("""
@@ -186,6 +194,7 @@ public class MicrosoftController {
 
                 JsonObject mc_auth_obj = new Gson().fromJson(mc_auth_body, JsonObject.class);
                 String mc_token = mc_auth_obj.get("access_token").getAsString();
+                System.out.println("[INFO]Get Minecraft Account Token & UUID Complete");
                 CheckHaveMinecraft(mc_token);
             } else {
                 System.out.println("Bad Connection:" + code);
@@ -196,7 +205,6 @@ public class MicrosoftController {
     }
 
     private void CheckHaveMinecraft(String MinecraftToken) {
-        System.out.println("[INFO]Get Minecraft Account Token & UUID Complete");
         System.out.println("[INFO]Checking Minecraft Possession");
 
         HttpClient client = new HttpClient();
@@ -254,7 +262,7 @@ public class MicrosoftController {
                     if (config_obj.has("users")) {
                         for (int i = 0; i < config_obj.get("users").getAsJsonArray().size(); i++) {
                             if (i != config_obj.get("users").getAsJsonArray().size()) {
-                                if (Objects.equals(config_obj.get("users").getAsJsonArray().get(i).getAsJsonObject().get("name").getAsString(), resp_obj.get("name").getAsString())) {
+                                if (Objects.equals(config_obj.get("users").getAsJsonArray().get(i).getAsJsonObject().getAsJsonObject("profile").get("name").getAsString(), resp_obj.get("name").getAsString())) {
                                     break;
                                 }
                             } else {
@@ -281,7 +289,7 @@ public class MicrosoftController {
             } else {
                 System.out.println("Bad Connection:" + code);
             }
-            fireWorkspaceStarted();
+            fireWorkspaceStarted("OAuthFinish");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

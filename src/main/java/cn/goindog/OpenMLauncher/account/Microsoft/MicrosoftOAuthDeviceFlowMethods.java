@@ -1,7 +1,7 @@
 package cn.goindog.OpenMLauncher.account.Microsoft;
 
+import cn.goindog.OpenMLauncher.events.OAuthEvents.OAuthFinishEvent;
 import cn.goindog.OpenMLauncher.events.OAuthEvents.OAuthFinishEventListener;
-import cn.goindog.OpenMLauncher.events.OAuthEvents.OAuthFinishEventObject;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import org.apache.commons.httpclient.methods.PostMethod;
@@ -23,7 +23,6 @@ public class MicrosoftOAuthDeviceFlowMethods {
     private static final String device_code_get_url = "https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode";
     private static final String device_method_token_get_url = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token";
     private final JsonObject object = new JsonObject();
-
     private Collection listeners;
 
     public void addOAuthFinishListener(OAuthFinishEventListener listener) {
@@ -38,21 +37,19 @@ public class MicrosoftOAuthDeviceFlowMethods {
             return;
         listeners.remove(listener);
     }
-    protected void fireWorkspaceStarted() {
+
+    protected void fireWorkspaceStarted(String type) {
         if (listeners == null)
             return;
-        OAuthFinishEventObject event = new OAuthFinishEventObject(this);
+        OAuthFinishEvent event = new OAuthFinishEvent(this, type);
         notifyListeners(event);
     }
-    private void notifyListeners(OAuthFinishEventObject event) {
+
+    private void notifyListeners(OAuthFinishEvent event) {
         Iterator iter = listeners.iterator();
         while (iter.hasNext()) {
             OAuthFinishEventListener listener = (OAuthFinishEventListener) iter.next();
-            try {
-                listener.OAuthFinishEvent(event);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+            listener.OAuthFinishEvent(event);
         }
     }
 
@@ -160,9 +157,10 @@ public class MicrosoftOAuthDeviceFlowMethods {
                             System.out.println("[INFO]Microsoft OAuth Device Code Flow Method: Bad Connection - " + code);
                 }
             }
-            fireWorkspaceStarted();
         } catch (InterruptedException | IOException e) {
             throw new RuntimeException(e);
         }
+        System.out.println("[INFO]Get Microsoft Account Token Complete");
+        fireWorkspaceStarted("OAuthFinish");
     }
 }

@@ -1,7 +1,7 @@
 package cn.goindog.OpenMLauncher.account.Microsoft;
 
 import cn.goindog.OpenMLauncher.events.OAuthEvents.OAuthFinishEventListener;
-import cn.goindog.OpenMLauncher.events.OAuthEvents.OAuthFinishEventObject;
+import cn.goindog.OpenMLauncher.events.OAuthEvents.OAuthFinishEvent;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -25,7 +25,7 @@ public class OldMicrosoftController {
     private static final String Minecraft_Authenticate_Url = "https://api.minecraftservices.com/authentication/login_with_xbox";
     private static final String Check_Url = "https://api.minecraftservices.com/entitlements/mcstore";
     private static final String get_profile_url = "https://api.minecraftservices.com/minecraft/profile";
-    private static final String refresh_token = "";
+    private static String refresh_token = "";
     private Collection listeners;
 
     public void addOAuthFinishListener(OAuthFinishEventListener listener) {
@@ -40,21 +40,17 @@ public class OldMicrosoftController {
             return;
         listeners.remove(listener);
     }
-        protected void fireWorkspaceStarted() {
+        protected void fireWorkspaceStarted(String type) {
         if (listeners == null)
             return;
-        OAuthFinishEventObject event = new OAuthFinishEventObject(this);
+        OAuthFinishEvent event = new OAuthFinishEvent(this, type);
         notifyListeners(event);
     }
-    private void notifyListeners(OAuthFinishEventObject event) {
+    private void notifyListeners(OAuthFinishEvent event) {
         Iterator iter = listeners.iterator();
         while (iter.hasNext()) {
             OAuthFinishEventListener listener = (OAuthFinishEventListener) iter.next();
-            try {
-                listener.OAuthFinishEvent(event);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+            listener.OAuthFinishEvent(event);
         }
     }
 
@@ -64,22 +60,23 @@ public class OldMicrosoftController {
             case DEVICE -> {
                 System.out.println("[INFO]Microsoft Login Method:Device Code Flow");
                 MicrosoftOAuthDeviceFlowMethods methods = new MicrosoftOAuthDeviceFlowMethods();
-                methods.build(options.getScopes());
                 methods.addOAuthFinishListener(event -> {
                     JsonObject returnObj = methods.getObject();
                     String access_token = returnObj.get("access_token").getAsString();
+                    refresh_token = returnObj.get("refresh_token").getAsString();
                     XblAuthenticate(access_token);
                 });
+                methods.build(options.getScopes());
             }
             case AUTHORIZATION_CODE -> {
                 System.out.println("[INFO]Microsoft Login Method:Authorization Code Flow");
                 MicrosoftOAuthAuthorizationCodeMethods methods = new MicrosoftOAuthAuthorizationCodeMethods();
-                methods.build(options.getMethod());
                 methods.addOAuthFinishListener(event -> {
                     JsonObject returnObj = methods.getObject();
                     String access_token = returnObj.get("access_token").getAsString();
                     XblAuthenticate(access_token);
                 });
+                methods.build(options.getMethod());
             }
         }
     }
@@ -251,7 +248,7 @@ public class OldMicrosoftController {
                 System.out.println("Bad Connection:" + resp.statusCode());
             }
         });
-        fireWorkspaceStarted();
+        fireWorkspaceStarted("OAuthFinish");
     }
 
     public static HttpRequest.BodyPublisher ofJsonData(Map<Object, Object> dat) {
