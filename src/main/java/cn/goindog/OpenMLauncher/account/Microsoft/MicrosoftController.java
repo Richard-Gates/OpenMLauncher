@@ -260,18 +260,22 @@ public class MicrosoftController {
                     resp_obj.addProperty("microsoft_refresh_token", refresh_token);
                     new_arr_obj.add("profile", resp_obj);
                     if (config_obj.has("users")) {
-                        for (int i = 0; i < config_obj.get("users").getAsJsonArray().size(); i++) {
-                            if (i != config_obj.get("users").getAsJsonArray().size()) {
-                                if (Objects.equals(config_obj.get("users").getAsJsonArray().get(i).getAsJsonObject().getAsJsonObject("profile").get("name").getAsString(), resp_obj.get("name").getAsString())) {
-                                    break;
-                                }
-                            } else {
-                                if (Objects.equals(config_obj.get("users").getAsJsonArray().get(i).getAsJsonObject().get("name").getAsString(), resp_obj.get("name").getAsString())) {
-                                    break;
+                        if (!config_obj.getAsJsonArray("users").isEmpty()) {
+                            for (int i = 0; i < config_obj.get("users").getAsJsonArray().size(); i++) {
+                                if (i != config_obj.get("users").getAsJsonArray().size()) {
+                                    if (Objects.equals(config_obj.get("users").getAsJsonArray().get(i).getAsJsonObject().getAsJsonObject("profile").get("name").getAsString(), resp_obj.get("name").getAsString())) {
+                                        break;
+                                    }
                                 } else {
-                                    config_obj.get("users").getAsJsonArray().add(new_arr_obj);
+                                    if (Objects.equals(config_obj.get("users").getAsJsonArray().get(i).getAsJsonObject().get("name").getAsString(), resp_obj.get("name").getAsString())) {
+                                        break;
+                                    } else {
+                                        config_obj.get("users").getAsJsonArray().add(new_arr_obj);
+                                    }
                                 }
                             }
+                        } else {
+                            config_obj.get("users").getAsJsonArray().add(new_arr_obj);
                         }
                         System.out.println("[INFO]Writing 'user.json' file");
                         FileUtils.writeStringToFile(user_config_file, config_obj.toString(), "utf-8");
