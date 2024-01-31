@@ -9,11 +9,13 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
+import java.util.Random;
 import java.util.UUID;
 
 public class OfflineController {
     public void build(String user_name) {
         UUID uuid = UUID.nameUUIDFromBytes(user_name.getBytes());
+        String token = UUID.randomUUID().toString().replace("-", "");
         try {
             File user_config_file = new File(
                     System.getProperty("user.dir") + "/.openmlauncher/user.json"
@@ -39,6 +41,18 @@ public class OfflineController {
             JsonObject profile = new JsonObject();
             profile.addProperty("name", user_name);
             profile.addProperty("id", uuid.toString());
+            profile.add("profileActions", new JsonObject());
+            profile.addProperty("minecraft_token", token);
+
+            JsonArray skins = new JsonArray();
+            JsonObject skin = new JsonObject();
+            skin.addProperty("id", UUID.fromString(user_name + "_skin").toString());
+            skin.addProperty("state", "ACTIVE");
+            int userNameHash = user_name.hashCode();
+            int verifyNumber = userNameHash++ % new Random().nextInt(userNameHash);
+            if (userNameHash * 10 > verifyNumber * new Random().nextInt(15)) {
+                skin.addProperty("url", "");
+            }
 
             user.add("profile", profile);
 

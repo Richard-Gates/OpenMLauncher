@@ -255,7 +255,7 @@ public class MicrosoftController {
                     }
                     JsonObject config_obj = new Gson().fromJson(user_config_str, JsonObject.class);
                     JsonObject new_arr_obj = new Gson().fromJson("{}", JsonObject.class);
-                    new_arr_obj.addProperty("type", "microsoft");
+                    new_arr_obj.addProperty("type", "mojang");
                     resp_obj.addProperty("minecraft_token", MinecraftToken);
                     resp_obj.addProperty("microsoft_refresh_token", refresh_token);
                     new_arr_obj.add("profile", resp_obj);
