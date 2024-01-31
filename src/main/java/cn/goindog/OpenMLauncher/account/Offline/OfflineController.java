@@ -51,9 +51,15 @@ public class OfflineController {
             int userNameHash = user_name.hashCode();
             int verifyNumber = userNameHash++ % new Random().nextInt(userNameHash);
             if (userNameHash * 10 > verifyNumber * new Random().nextInt(15)) {
-                skin.addProperty("url", "");
+                skin.addProperty("url", "https://zh.minecraft.wiki/images/Steve_%28classic_texture%29_JE6.png");
+            } else {
+                skin.addProperty("url", "https://zh.minecraft.wiki/images/Alex_%28classic_texture%29_JE2.png");
             }
+            skin.addProperty("variant", "CLASSIC");
 
+            skins.add(skin);
+
+            profile.add("skins", skins);
             user.add("profile", profile);
 
             if (user_config.has("users")) {
