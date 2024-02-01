@@ -1,4 +1,4 @@
-package cn.goindog.OpenMLauncher.game.Forge;
+package cn.goindog.OpenMLauncher.game.download.Forge;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -11,7 +11,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 
-public class ForgeController {
+public class ForgedDownloader {
     public JsonObject getAllForgeVersion() throws IOException {
         String canUseForgeVersionStr = IOUtils.toString(new URL("https://bmclapi2.bangbang93.com/forge/minecraft"));
         JsonArray canUseForgeVersionArr = new Gson().fromJson(canUseForgeVersionStr, JsonArray.class);
@@ -24,28 +24,28 @@ public class ForgeController {
         return obj;
     }
 
-    public void Get(ForgeInstallerConfig config) throws IOException {
-        String forgeVer = config.getForgeVer();
-        String mcVer = config.getGameVer();
+    public void build(ForgeInstallerProfile profile) throws IOException {
+        String forgeVer = profile.getForgeVer();
+        String mcVer = profile.getGameVer();
         JsonObject versions = getAllForgeVersion();
         if (versions.has(mcVer)) {
             JsonArray versionArr = versions.getAsJsonArray(mcVer);
             for (JsonElement je : versionArr) {
                 String forgeVersion = je.getAsJsonObject().get("version").getAsString();
                 if (forgeVersion.equals(forgeVer)) {
-                    PrivateCenterDownload(config);
+                    PrivateCenterDownload(profile);
                 }
             }
         }
     }
 
-    private static void PrivateCenterDownload(ForgeInstallerConfig conf) {
+    private static void PrivateCenterDownload(ForgeInstallerProfile conf) {
         Thread installer_download = new Thread(() -> {
             PrivateInstallerDownload(conf);
             String path = System.getProperty("oml.gameDir") + "/versions/" + conf.getGameVer() + "-forge-" + conf.getForgeVer() + "/";
             File installer = new File(System.getProperty("oml.gameDir") + "/versions/" + conf.getGameVer() + "-forge-" + conf.getForgeVer() + "/forge-installer.jar");
             try {
-                PrivateInstaller(installer);
+                PrivateInstall(installer);
             } catch (IOException | InterruptedException e) {
                 throw new RuntimeException(e);
             }
@@ -53,7 +53,7 @@ public class ForgeController {
         installer_download.start();
     }
 
-    private static void PrivateInstallerDownload(ForgeInstallerConfig conf) {
+    private static void PrivateInstallerDownload(ForgeInstallerProfile conf) {
         String installJarPath = System.getProperty("oml.gameDir") + "/versions/" + conf.getGameVer() + "-forge-" + conf.getForgeVer() + "/forge-installer.jar";
         File installJarFile = new File(installJarPath);
         URL installJarUrl = null;
@@ -66,7 +66,7 @@ public class ForgeController {
         }
     }
 
-    private static void PrivateInstaller(File Installer) throws IOException, InterruptedException {
+    private static void PrivateInstall(File Installer) throws IOException, InterruptedException {
 
     }
 

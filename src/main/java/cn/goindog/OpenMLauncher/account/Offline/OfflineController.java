@@ -46,11 +46,11 @@ public class OfflineController {
 
             JsonArray skins = new JsonArray();
             JsonObject skin = new JsonObject();
-            skin.addProperty("id", UUID.fromString(user_name + "_skin").toString());
+            skin.addProperty("id", UUID.nameUUIDFromBytes((user_name + "_skin").getBytes()).toString());
             skin.addProperty("state", "ACTIVE");
             int userNameHash = user_name.hashCode();
-            int verifyNumber = userNameHash++ % new Random().nextInt(userNameHash);
-            if (userNameHash * 10 > verifyNumber * new Random().nextInt(15)) {
+            int verifyNumber = userNameHash++ % new Random().nextInt(userNameHash - (2 * userNameHash));
+            if (userNameHash * 10 > verifyNumber * new Random().nextInt(9) + 1) {
                 skin.addProperty("url", "https://zh.minecraft.wiki/images/Steve_%28classic_texture%29_JE6.png");
             } else {
                 skin.addProperty("url", "https://zh.minecraft.wiki/images/Alex_%28classic_texture%29_JE2.png");
@@ -62,29 +62,47 @@ public class OfflineController {
             profile.add("skins", skins);
             user.add("profile", profile);
 
-            if (user_config.has("users")) {
-                if (!user_config.get("users").getAsJsonArray().isEmpty()) {
-                    for (int i = 0; i < user_config.getAsJsonArray("users").size(); i++) {
-                        JsonArray arr = user_config.getAsJsonArray("users");
-                        String type = arr.get(i).getAsJsonObject().get("type").getAsString();
-                        if (Objects.equals(type, "offline")) {
-                            String name = arr.get(i).getAsJsonObject().getAsJsonObject("profile").get("name").getAsString();
-                            if (i != user_config.size()) {
-                                if (Objects.equals(name, user_name)) {
-                                    break;
-                                }
-                            } else {
-                                if (Objects.equals(name, user_name)) {
-                                    break;
-                                } else {
-                                    user_config.getAsJsonArray("users").add(user);
-                                }
+            JsonArray arr = user_config.getAsJsonArray("users");
+
+            if (!arr.getAsJsonArray().isEmpty()) {
+                for (int i = 0; i < arr.size(); i++) {
+
+                    if (i != arr.size()) {
+                        if (
+                                arr.get(i).getAsJsonObject()
+                                        .get("type").getAsString()
+                                        .equals("offline")
+                        ) {
+                            if (
+                                    arr.get(i).getAsJsonObject()
+                                            .getAsJsonObject("profile")
+                                            .get("id").getAsString()
+                                            .equals(
+                                                    uuid.toString()
+                                            )
+                            ) {
+                                break;
                             }
                         }
+                    } else {
+                        if (
+                                !arr.get(i).getAsJsonObject()
+                                        .getAsJsonObject("profile")
+                                        .get("name").getAsString()
+                                        .equals(
+                                                user_name
+                                        )
+                                        &&
+                                        !arr.get(i).getAsJsonObject()
+                                                .get("type").getAsString()
+                                                .equals("offline")
+                        ) {
+                            user_config.getAsJsonArray("users").add(user);
+                        }
                     }
-                } else {
-                    user_config.getAsJsonArray("users").add(user);
                 }
+            } else {
+                user_config.getAsJsonArray("users").add(user);
             }
 
             FileUtils.writeStringToFile(
@@ -92,7 +110,8 @@ public class OfflineController {
                     user_config.toString(),
                     StandardCharsets.UTF_8
             );
-        } catch (IOException e) {
+        } catch (
+                IOException e) {
             throw new RuntimeException(e);
         }
     }

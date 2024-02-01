@@ -1,4 +1,4 @@
-package cn.goindog.OpenMLauncher.game;
+package cn.goindog.OpenMLauncher.game.download;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;

@@ -132,15 +132,15 @@ public class MicrosoftController {
     private void XstsAuthenticate(String XblToken) {
         System.out.println("[INFO]Getting XSTS Token & UserHash");
         JsonObject data = new Gson().fromJson("""
-                                                      {
-                                                          "Properties": {
-                                                              "SandboxId": "RETAIL",
-                                                              "UserTokens":""" + List.of(XblToken) + """
-                                                          },
-                                                          "RelyingParty": "rp://api.minecraftservices.com/",
-                                                          "TokenType": "JWT"
-                                                      }
-                                                      """, JsonObject.class);
+                {
+                    "Properties": {
+                        "SandboxId": "RETAIL",
+                        "UserTokens":""" + List.of(XblToken) + """
+                    },
+                    "RelyingParty": "rp://api.minecraftservices.com/",
+                    "TokenType": "JWT"
+                }
+                """, JsonObject.class);
 
         HttpClient client = new HttpClient();
         PostMethod method = new PostMethod(xsts_url);
@@ -173,12 +173,12 @@ public class MicrosoftController {
         System.out.println("[INFO]Getting Minecraft Account Token & UUID");
 
         JsonObject data = new Gson().fromJson("""
-                                                      {
-                                                          "identityToken": "XBL3.0 x=""" + UHS + ";" + XSTSToken +
-                                              """
-                                                      "
-                                                      }
-                                                      """, JsonObject.class);
+                {
+                    "identityToken": "XBL3.0 x=""" + UHS + ";" + XSTSToken +
+                """
+                        "
+                        }
+                        """, JsonObject.class);
 
         HttpClient client = new HttpClient();
         PostMethod method = new PostMethod(Minecraft_Authenticate_Url);
@@ -256,21 +256,39 @@ public class MicrosoftController {
                     JsonObject config_obj = new Gson().fromJson(user_config_str, JsonObject.class);
                     JsonObject new_arr_obj = new Gson().fromJson("{}", JsonObject.class);
                     new_arr_obj.addProperty("type", "mojang");
-                    resp_obj.addProperty("minecraft_token", MinecraftToken);
-                    resp_obj.addProperty("microsoft_refresh_token", refresh_token);
                     new_arr_obj.add("profile", resp_obj);
+                    new_arr_obj.addProperty("minecraft_token", MinecraftToken);
+                    new_arr_obj.addProperty("microsoft_refresh_token", refresh_token);
                     if (config_obj.has("users")) {
                         if (!config_obj.getAsJsonArray("users").isEmpty()) {
                             for (int i = 0; i < config_obj.get("users").getAsJsonArray().size(); i++) {
-                                if (i != config_obj.get("users").getAsJsonArray().size()) {
-                                    if (Objects.equals(config_obj.get("users").getAsJsonArray().get(i).getAsJsonObject().getAsJsonObject("profile").get("name").getAsString(), resp_obj.get("name").getAsString())) {
-                                        break;
-                                    }
-                                } else {
-                                    if (Objects.equals(config_obj.get("users").getAsJsonArray().get(i).getAsJsonObject().get("name").getAsString(), resp_obj.get("name").getAsString())) {
-                                        break;
+                                JsonObject profile = config_obj.get("users").getAsJsonArray()
+                                        .get(i).getAsJsonObject()
+                                        .get("profile").getAsJsonObject();
+                                if (
+                                        config_obj.get("users").getAsJsonArray()
+                                                .get(i).getAsJsonObject()
+                                                .get("type").getAsString()
+                                                .equals("microsoft")
+                                ) {
+                                    if (i != config_obj.get("users").getAsJsonArray().size() - 1) {
+                                        if (
+                                                profile.get("id").getAsString()
+                                                        .equals(
+                                                                resp_obj.get("id").getAsString()
+                                                        )
+                                        ) {
+                                            break;
+                                        }
                                     } else {
-                                        config_obj.get("users").getAsJsonArray().add(new_arr_obj);
+                                        if (
+                                                !profile.get("id").getAsString()
+                                                        .equals(
+                                                                resp_obj.get("id").getAsString()
+                                                        )
+                                        ) {
+                                            config_obj.get("users").getAsJsonArray().add(new_arr_obj);
+                                        }
                                     }
                                 }
                             }

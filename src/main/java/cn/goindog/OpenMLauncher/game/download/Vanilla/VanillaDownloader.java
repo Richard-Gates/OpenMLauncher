@@ -1,26 +1,18 @@
-package cn.goindog.OpenMLauncher.game.Vanilla;
+package cn.goindog.OpenMLauncher.game.download.Vanilla;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 
 import java.io.*;
 import java.net.*;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.util.Iterator;
-import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
-public class VanillaController {
+public class VanillaDownloader {
     private static final String manifest_url = "https://piston-meta.mojang.com/mc/game/version_manifest.json";
     public String gameDir = System.getProperty("user.dir") + "/.minecraft";
 
@@ -41,7 +33,8 @@ public class VanillaController {
         return null;
     }
 
-    public void Get(String versionName) throws IOException {
+    public void build(VanillaInstallProfile profile) throws IOException {
+        String versionName = profile.getVersion();
         System.out.println("[INFO]Reading version_manifest.json file.");
         JsonArray version_manifest_arr = getAllGameVersion();
         for (int vm_index = 0; vm_index < version_manifest_arr.size(); vm_index++) {
