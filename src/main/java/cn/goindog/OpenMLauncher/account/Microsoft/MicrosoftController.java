@@ -265,32 +265,31 @@ public class MicrosoftController {
                                 JsonObject profile = config_obj.get("users").getAsJsonArray()
                                         .get(i).getAsJsonObject()
                                         .get("profile").getAsJsonObject();
-                                if (
-                                        config_obj.get("users").getAsJsonArray()
-                                                .get(i).getAsJsonObject()
-                                                .get("type").getAsString()
-                                                .equals("microsoft")
-                                ) {
-                                    if (i != config_obj.get("users").getAsJsonArray().size() - 1) {
-                                        if (
-                                                profile.get("id").getAsString()
-                                                        .equals(
-                                                                resp_obj.get("id").getAsString()
-                                                        )
-                                        ) {
-                                            break;
-                                        }
-                                    } else {
-                                        if (
-                                                !profile.get("id").getAsString()
-                                                        .equals(
-                                                                resp_obj.get("id").getAsString()
-                                                        )
-                                        ) {
-                                            config_obj.get("users").getAsJsonArray().add(new_arr_obj);
-                                        }
+                                if (i != config_obj.get("users").getAsJsonArray().size() - 1) {
+                                    if (
+                                            profile.get("id").getAsString()
+                                                    .equals(
+                                                            resp_obj.get("id").getAsString()
+                                                    )
+                                                    &&
+                                                    config_obj.get("users").getAsJsonArray()
+                                                            .get(i).getAsJsonObject()
+                                                            .get("type").getAsString()
+                                                            .equals("microsoft")
+                                    ) {
+                                        break;
+                                    }
+                                } else {
+                                    if (
+                                            !profile.get("id").getAsString()
+                                                    .equals(
+                                                            resp_obj.get("id").getAsString()
+                                                    )
+                                    ) {
+                                        config_obj.get("users").getAsJsonArray().add(new_arr_obj);
                                     }
                                 }
+
                             }
                         } else {
                             config_obj.get("users").getAsJsonArray().add(new_arr_obj);

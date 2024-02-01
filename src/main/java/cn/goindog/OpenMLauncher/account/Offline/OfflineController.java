@@ -17,19 +17,10 @@ public class OfflineController {
         UUID uuid = UUID.nameUUIDFromBytes(user_name.getBytes());
         String token = UUID.randomUUID().toString().replace("-", "");
         try {
-            File user_config_file = new File(
-                    System.getProperty("user.dir") + "/.openmlauncher/user.json"
-            );
+            File user_config_file = new File(System.getProperty("user.dir") + "/.openmlauncher/user.json");
             JsonObject user_config;
             if (user_config_file.exists()) {
-                user_config = new Gson().fromJson(
-                        FileUtils.readFileToString(
-                                user_config_file
-                                ,
-                                StandardCharsets.UTF_8
-                        ),
-                        JsonObject.class
-                );
+                user_config = new Gson().fromJson(FileUtils.readFileToString(user_config_file, StandardCharsets.UTF_8), JsonObject.class);
             } else {
                 user_config = new JsonObject();
                 user_config.add("users", new JsonArray());
@@ -66,37 +57,16 @@ public class OfflineController {
 
             if (!arr.getAsJsonArray().isEmpty()) {
                 for (int i = 0; i < arr.size(); i++) {
-
-                    if (i != arr.size()) {
+                    if (i != arr.size() - 1) {
                         if (
-                                arr.get(i).getAsJsonObject()
-                                        .get("type").getAsString()
-                                        .equals("offline")
+                                arr.get(i).getAsJsonObject().getAsJsonObject("profile").get("name").getAsString().equals(user_name)
+                                        &&
+                                        arr.get(i).getAsJsonObject().get("type").getAsString().equals("offline")
                         ) {
-                            if (
-                                    arr.get(i).getAsJsonObject()
-                                            .getAsJsonObject("profile")
-                                            .get("id").getAsString()
-                                            .equals(
-                                                    uuid.toString()
-                                            )
-                            ) {
-                                break;
-                            }
+                            break;
                         }
                     } else {
-                        if (
-                                !arr.get(i).getAsJsonObject()
-                                        .getAsJsonObject("profile")
-                                        .get("name").getAsString()
-                                        .equals(
-                                                user_name
-                                        )
-                                        &&
-                                        !arr.get(i).getAsJsonObject()
-                                                .get("type").getAsString()
-                                                .equals("offline")
-                        ) {
+                        if (!arr.get(i).getAsJsonObject().getAsJsonObject("profile").get("name").getAsString().equals(user_name)) {
                             user_config.getAsJsonArray("users").add(user);
                         }
                     }
@@ -105,13 +75,8 @@ public class OfflineController {
                 user_config.getAsJsonArray("users").add(user);
             }
 
-            FileUtils.writeStringToFile(
-                    user_config_file,
-                    user_config.toString(),
-                    StandardCharsets.UTF_8
-            );
-        } catch (
-                IOException e) {
+            FileUtils.writeStringToFile(user_config_file, user_config.toString(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
