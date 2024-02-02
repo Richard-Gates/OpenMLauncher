@@ -10,8 +10,9 @@ import org.apache.commons.io.IOUtils;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 
-public class ForgedDownloader {
+public class ForgeDownloader {
     public JsonObject getAllForgeVersion() throws IOException {
         String canUseForgeVersionStr = IOUtils.toString(new URL("https://bmclapi2.bangbang93.com/forge/minecraft"));
         JsonArray canUseForgeVersionArr = new Gson().fromJson(canUseForgeVersionStr, JsonArray.class);
@@ -43,7 +44,7 @@ public class ForgedDownloader {
         Thread installer_download = new Thread(() -> {
             PrivateInstallerDownload(conf);
             String path = System.getProperty("oml.gameDir") + "/versions/" + conf.getGameVer() + "-forge-" + conf.getForgeVer() + "/";
-            File installer = new File(System.getProperty("oml.gameDir") + "/versions/" + conf.getGameVer() + "-forge-" + conf.getForgeVer() + "/forge-installer.jar");
+            File installer = new File(path +  "/forge-installer.jar");
             try {
                 PrivateInstall(installer);
             } catch (IOException | InterruptedException e) {
@@ -56,7 +57,7 @@ public class ForgedDownloader {
     private static void PrivateInstallerDownload(ForgeInstallerProfile conf) {
         String installJarPath = System.getProperty("oml.gameDir") + "/versions/" + conf.getGameVer() + "-forge-" + conf.getForgeVer() + "/forge-installer.jar";
         File installJarFile = new File(installJarPath);
-        URL installJarUrl = null;
+        URL installJarUrl;
         try {
             installJarUrl = new URL("https://bmclapi2.bangbang93.com/forge/download/?mcversion=" + conf.getGameVer() + "&version=" + conf.getForgeVer() + "&category=installer&format=jar");
             FileUtils.writeByteArrayToFile(installJarFile, IOUtils.toByteArray(installJarUrl));
@@ -67,7 +68,7 @@ public class ForgedDownloader {
     }
 
     private static void PrivateInstall(File Installer) throws IOException, InterruptedException {
-
+        new ForgeOldInstaller().setInstaller(Installer).build();
     }
 
     private static void createLauncherProfile() throws IOException {
@@ -80,6 +81,49 @@ public class ForgedDownloader {
         profilesObj.add("(Default)", profileDefault);
         obj.add("profile", profilesObj);
         String profileDir = System.getProperty("oml.gameDir") + File.separator + "launcher_profiles.json";
-        FileUtils.writeStringToFile(new File(profileDir), profilesObj.toString());
+        FileUtils.writeStringToFile(new File(profileDir), profilesObj.toString(), StandardCharsets.UTF_8);
+    }
+
+    static class ForgeOldInstaller {
+        private File installer;
+        public ForgeOldInstaller(File installer) {
+            this.installer = installer;
+        }
+        public ForgeOldInstaller() {
+        }
+
+        public ForgeOldInstaller setInstaller(File installer) {
+            this.installer = installer;
+            return this;
+        }
+
+        public File getInstaller() {
+            return this.installer;
+        }
+
+        public void build() {
+
+        }
+    }
+
+    static class ForgeNewInstaller {
+        private File installer;
+
+        public ForgeNewInstaller() {
+
+        }
+
+        public ForgeNewInstaller(File installer) {
+            this.installer = installer;
+        }
+
+        public ForgeNewInstaller setInstaller(File installer) {
+            this.installer = installer;
+            return this;
+        }
+
+        public File getInstaller() {
+            return this.installer;
+        }
     }
 }
