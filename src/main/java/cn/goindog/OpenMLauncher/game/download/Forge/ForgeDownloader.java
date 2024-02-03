@@ -68,8 +68,6 @@ public class ForgeDownloader {
     }
 
     private static void PrivateInstall(File Installer) throws IOException, InterruptedException {
-        String mc_version = "";
-
     }
 
     private static void createLauncherProfile() throws IOException {
