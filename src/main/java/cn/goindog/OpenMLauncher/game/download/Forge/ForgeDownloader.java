@@ -1,5 +1,6 @@
 package cn.goindog.OpenMLauncher.game.download.Forge;
 
+import cn.goindog.OpenMLauncher.exceptions.ForgeExceptions.NullInstallerException;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -100,8 +101,10 @@ public class ForgeDownloader {
             return this.installer;
         }
 
-        public void build() {
-
+        public void build() throws NullInstallerException {
+            if (this.installer == null) {
+                throw new NullInstallerException("The installer is not valid.Please check forge installer path.");
+            }
         }
     }
 
@@ -123,6 +126,12 @@ public class ForgeDownloader {
 
         public File getInstaller() {
             return this.installer;
+        }
+
+        public void build() throws NullInstallerException {
+            if (this.installer == null) {
+                throw new NullInstallerException("The installer is not valid.Please check forge installer path.");
+            }
         }
     }
 }
