@@ -25,7 +25,7 @@ public class ForgeDownloader {
         return obj;
     }
 
-    public void build(ForgeInstallerProfile profile) throws IOException {
+    public void build(ForgeInstallProfile profile) throws IOException {
         String forgeVer = profile.getForgeVer();
         String mcVer = profile.getGameVer();
         JsonObject versions = getAllForgeVersion();
@@ -40,7 +40,7 @@ public class ForgeDownloader {
         }
     }
 
-    private static void PrivateCenterDownload(ForgeInstallerProfile conf) {
+    private static void PrivateCenterDownload(ForgeInstallProfile conf) {
         Thread installer_download = new Thread(() -> {
             PrivateInstallerDownload(conf);
             String path = System.getProperty("oml.gameDir") + "/versions/" + conf.getGameVer() + "-forge-" + conf.getForgeVer() + "/";
@@ -54,7 +54,7 @@ public class ForgeDownloader {
         installer_download.start();
     }
 
-    private static void PrivateInstallerDownload(ForgeInstallerProfile conf) {
+    private static void PrivateInstallerDownload(ForgeInstallProfile conf) {
         String installJarPath = System.getProperty("oml.gameDir") + "/versions/" + conf.getGameVer() + "-forge-" + conf.getForgeVer() + "/forge-installer.jar";
         File installJarFile = new File(installJarPath);
         URL installJarUrl;
@@ -68,7 +68,8 @@ public class ForgeDownloader {
     }
 
     private static void PrivateInstall(File Installer) throws IOException, InterruptedException {
-        new ForgeOldInstaller().setInstaller(Installer).build();
+        String mc_version = "";
+
     }
 
     private static void createLauncherProfile() throws IOException {

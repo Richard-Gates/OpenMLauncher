@@ -1,17 +1,19 @@
 package cn.goindog.OpenMLauncher.game.download.Forge;
 
-public class ForgeInstallerProfile {
+public class ForgeInstallProfile {
     private String gameVer;
     private String forgeVer;
 
-    public void setGameVer(String value) {
+    public ForgeInstallProfile setGameVer(String value) {
         gameVer = value;
+        return this;
     }
     public String getGameVer() {
         return gameVer;
     }
-    public void setForgeVer(String value) {
+    public ForgeInstallProfile setForgeVer(String value) {
         forgeVer = value;
+        return this;
     }
     public String getForgeVer() {
         return forgeVer;
