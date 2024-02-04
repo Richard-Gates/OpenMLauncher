@@ -15,6 +15,17 @@ import java.util.jar.JarFile;
 public class VanillaDownloader {
     private static final String manifest_url = "https://piston-meta.mojang.com/mc/game/version_manifest.json";
     public String gameDir = System.getProperty("user.dir") + "/.minecraft";
+    private static String verName = "";
+    private static String gameDownloadDir = System.getProperty("oml.gameDir") + "/versions/" + verName;
+
+    public VanillaDownloader setGameDownloadDir(String newGameDownloadDir) {
+        gameDownloadDir = newGameDownloadDir;
+        return this;
+    }
+
+    public static String getGameDownloadDir() {
+        return gameDownloadDir;
+    }
 
     public JsonArray getAllGameVersion() throws IOException {
         HttpURLConnection connection = (HttpURLConnection) new URL(manifest_url).openConnection();
@@ -40,17 +51,18 @@ public class VanillaDownloader {
         for (int vm_index = 0; vm_index < version_manifest_arr.size(); vm_index++) {
             if (Objects.equals(version_manifest_arr.get(vm_index).getAsJsonObject().get("id").getAsString(), versionName)) {
                 String gameJsonUrl = version_manifest_arr.get(vm_index).getAsJsonObject().get("url").getAsString();
-                PrivateCenterDownload(new URL(gameJsonUrl), versionName);
+                PrivateCenterDownload(new URL(gameJsonUrl), profile);
+                verName = versionName;
             }
         }
     }
 
-    private static void PrivateCenterDownload(URL versionJson, String verName) throws IOException {
+    private static void PrivateCenterDownload(URL versionJson, VanillaInstallProfile profile) throws IOException {
         JsonObject versionJsonObj = new Gson().fromJson(IOUtils.toString(versionJson, StandardCharsets.UTF_8), JsonObject.class);
         System.out.println("[INFO]Downloading client.jar file.");
         var clientJarUrl = versionJsonObj.getAsJsonObject("downloads").getAsJsonObject("client").get("url").getAsString();
-        var versionDir = System.getProperty("oml.gameDir") + "/versions/" + verName;
-        FileUtils.writeByteArrayToFile(new File(versionDir + "/client.jar"), IOUtils.toByteArray(new URL(clientJarUrl)));
+        var versionDir = gameDownloadDir;
+        FileUtils.writeByteArrayToFile(new File(versionDir + File.separator + profile.getVersion() + ".jar"), IOUtils.toByteArray(new URL(clientJarUrl)));
         String assetsIndexUrl = versionJsonObj.getAsJsonObject("assetIndex").get("url").getAsString();
         Thread asset_download = new Thread(() -> {
             try {

@@ -48,7 +48,8 @@ public class VanillaInstallProfile {
         return version;
     }
 
-    public void setVersion(String version) {
+    public VanillaInstallProfile setVersion(String version) {
         this.version = version;
+        return this;
     }
 }

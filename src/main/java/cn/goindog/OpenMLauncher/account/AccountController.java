@@ -80,4 +80,23 @@ public class AccountController {
             }
         }
     }
+
+    public JsonObject getSelectorUser() throws IOException {
+        JsonObject userJson = new Gson().fromJson(
+                FileUtils.readFileToString(
+                        new File(
+                                System.getProperty("user.dir")
+                                + File.separator
+                                + ".openmlauncher"
+                                + File.separator
+                                + "user.json"
+                        ),
+                        StandardCharsets.UTF_8
+                ),
+                JsonObject.class
+        );
+        int selectorIndex = userJson.get("selector").getAsInt();
+        JsonArray users = userJson.getAsJsonArray("users");
+        return users.get(selectorIndex).getAsJsonObject();
+    }
 }
