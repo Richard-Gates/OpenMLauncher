@@ -260,6 +260,11 @@ public class ForgeDownloader {
                             getInstaller().getPath().replace("forge-installer.jar", versionName + ".jar")
                     )
             );
+            FileUtils.delete(
+                    new File(
+                            getInstaller().getPath().replace("forge-installer.jar", version[0] + ".jar")
+                    )
+            );
         }
 
         private JsonObject versionJsonMerge(JsonObject firstObj, JsonObject secondObj) {
@@ -267,6 +272,9 @@ public class ForgeDownloader {
                 if (!firstObj.has(key)) {
                     firstObj.add(key, secondObj.get(key));
                 }
+            }
+            for (JsonElement element : secondObj.getAsJsonArray("libraries")) {
+                firstObj.getAsJsonArray("libraries").add(element);
             }
             return firstObj;
         }
