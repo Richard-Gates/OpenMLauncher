@@ -1,5 +1,9 @@
 package cn.goindog.OpenMLauncher.game.download.Vanilla;
 
+import cn.goindog.OpenMLauncher.events.GameEvents.DownloadFinishEvent;
+import cn.goindog.OpenMLauncher.events.GameEvents.DownloadFinishEventListener;
+import cn.goindog.OpenMLauncher.events.OAuthEvents.OAuthFinishEvent;
+import cn.goindog.OpenMLauncher.events.OAuthEvents.OAuthFinishEventListener;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -9,6 +13,8 @@ import org.apache.commons.io.IOUtils;
 import java.io.*;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.jar.JarFile;
 
@@ -18,6 +24,34 @@ public class VanillaDownloader {
     private static String verName = "";
     private static String gameDownloadDir = System.getProperty("oml.gameDir") + "/versions/" + verName;
 
+    private Collection listeners;
+
+    public void addDownloadFinishListener(DownloadFinishEventListener listener) {
+        if (listeners == null) {
+            listeners = new HashSet();
+        }
+        listeners.add(listener);
+    }
+
+    public void removeDownloadFinishListener(DownloadFinishEventListener listener) {
+        if (listeners == null)
+            return;
+        listeners.remove(listener);
+    }
+
+    protected void fireWorkspaceStarted(String type) {
+        if (listeners == null)
+            return;
+        DownloadFinishEvent event = new DownloadFinishEvent(this, type);
+        notifyListeners(event);
+    }
+
+    private void notifyListeners(DownloadFinishEvent event) {
+        for (Object o : listeners) {
+            DownloadFinishEventListener listener = (DownloadFinishEventListener) o;
+            listener.DownloadFinishEvent(event);
+        }
+    }
     public VanillaDownloader setGameDownloadDir(String newGameDownloadDir) {
         gameDownloadDir = newGameDownloadDir;
         return this;
@@ -45,6 +79,8 @@ public class VanillaDownloader {
     }
 
     public void build(VanillaInstallProfile profile) throws IOException {
+        verName = profile.getVersion();
+        gameDownloadDir = System.getProperty("oml.gameDir") + "/versions/" + verName;
         String versionName = profile.getVersion();
         System.out.println("[INFO]Reading version_manifest.json file.");
         JsonArray version_manifest_arr = getAllGameVersion();
@@ -52,13 +88,13 @@ public class VanillaDownloader {
             if (Objects.equals(version_manifest_arr.get(vm_index).getAsJsonObject().get("id").getAsString(), versionName)) {
                 String gameJsonUrl = version_manifest_arr.get(vm_index).getAsJsonObject().get("url").getAsString();
                 PrivateCenterDownload(new URL(gameJsonUrl), profile);
-                verName = versionName;
             }
         }
     }
 
-    private static void PrivateCenterDownload(URL versionJson, VanillaInstallProfile profile) throws IOException {
+    private void PrivateCenterDownload(URL versionJson, VanillaInstallProfile profile) throws IOException {
         JsonObject versionJsonObj = new Gson().fromJson(IOUtils.toString(versionJson, StandardCharsets.UTF_8), JsonObject.class);
+        PrivateLog4jConfigBuild(versionJsonObj);
         System.out.println("[INFO]Downloading client.jar file.");
         var clientJarUrl = versionJsonObj.getAsJsonObject("downloads").getAsJsonObject("client").get("url").getAsString();
         var versionDir = gameDownloadDir;
@@ -66,16 +102,10 @@ public class VanillaDownloader {
         String assetsIndexUrl = versionJsonObj.getAsJsonObject("assetIndex").get("url").getAsString();
         Thread asset_download = new Thread(() -> {
             try {
-                PrivateAssetDownload(new URL(assetsIndexUrl), versionDir + "/assets/");
+                PrivateAssetDownload(new URL(assetsIndexUrl), versionDir + "/assets/objects/", versionJsonObj.getAsJsonObject("assetIndex").get("id").getAsString(),  versionJsonObj.getAsJsonArray("libraries"));
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-        });
-        Thread lib_download = new Thread(() -> {
-            System.out.println("[INFO]Libraries download thread started.");
-            JsonArray libraries = versionJsonObj.getAsJsonArray("libraries");
-            String path = versionDir + "/libraries/";
-            PrivateLibrariesDownload(libraries, path);
         });
         Thread writeGameJsonThread = new Thread(() -> {
             try {
@@ -85,16 +115,29 @@ public class VanillaDownloader {
             }
         });
         asset_download.start();
-        lib_download.start();
         writeGameJsonThread.start();
     }
 
-    private static void PrivateAssetDownload(URL asset_index, String assetPath) throws IOException {
+    private void PrivateAssetDownload(URL asset_index, String assetPath,String AssetsId,JsonArray libraries) throws IOException {
         JsonObject asset_json_obj = new Gson().fromJson(IOUtils.toString(asset_index, StandardCharsets.UTF_8), JsonObject.class).getAsJsonObject("objects");
         JsonArray asset_json_keys = new Gson().fromJson("[]", JsonArray.class);
         for (String s : asset_json_obj.keySet()) {
             asset_json_keys.add(s);
         }
+        File assets = new File(
+                gameDownloadDir
+                + File.separator
+                + "assets"
+                + File.separator
+                + "indexes"
+                + File.separator
+                + AssetsId
+                + ".json"
+        );
+        FileUtils.writeByteArrayToFile(
+                assets,
+                IOUtils.toByteArray(asset_index)
+        );
         Thread th1 = new Thread(() -> {
             for (int i = 0; i < asset_json_keys.size() / 8; i++) {
                 String key = asset_json_keys.get(i).getAsString();
@@ -207,6 +250,14 @@ public class VanillaDownloader {
         th6.start();
         th7.start();
         th8.start();
+
+        System.out.println("[INFO]Libraries download thread started.");
+        String path = gameDownloadDir + "/libraries/";
+        PrivateLibrariesDownload(libraries, path);
+    }
+
+    public void reDownloadFiles(URL assetsIndex, String assetsPath, String assetsId, JsonArray libraries) throws IOException {
+        PrivateAssetDownload(assetsIndex, assetsPath, assetsId, libraries);
     }
 
     private static URL PrivateSummonAssetDownloadUrl(String assetHash) throws MalformedURLException {
@@ -214,7 +265,7 @@ public class VanillaDownloader {
         return new URL(url);
     }
 
-    private static void PrivateLibrariesDownload(JsonArray libraries, String libDirPath) {
+    private void PrivateLibrariesDownload(JsonArray libraries, String libDirPath) {
         Thread download_th1 = new Thread(() -> {
             for (int i = 0; i < libraries.size() / 4; i++) {
                 JsonObject downloads_obj = libraries.get(i).getAsJsonObject().getAsJsonObject("downloads");
@@ -423,5 +474,23 @@ public class VanillaDownloader {
         download_th2.start();
         download_th3.start();
         download_th4.start();
+    }
+
+    private void PrivateLog4jConfigBuild(JsonObject versionJson) throws IOException {
+        JsonObject client = versionJson.getAsJsonObject("logging")
+                .getAsJsonObject("client");
+        String url = client.getAsJsonObject("file").get("url").getAsString();
+        String id = client.getAsJsonObject("file").get("id").getAsString();
+        File config = new File(
+                gameDownloadDir
+                + File.separator
+                + "log4j"
+                + File.separator
+                + id
+        );
+        FileUtils.writeByteArrayToFile(
+                config,
+                IOUtils.toByteArray(new URL(url))
+        );
     }
 }
