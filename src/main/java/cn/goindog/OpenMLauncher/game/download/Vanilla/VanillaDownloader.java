@@ -81,7 +81,7 @@ public class VanillaDownloader {
         verName = profile.getVersionName();
         gameDownloadDir = System.getProperty("oml.gameDir") + "/versions/" + verName;
         String versionName = profile.getVersion();
-        System.out.println("[INFO]Reading version_manifest.json file.");
+        System.out.println("[INFO]Vanilla Downloader: Reading version_manifest.json file.");
         JsonArray version_manifest_arr = getAllGameVersion();
         for (int vm_index = 0; vm_index < version_manifest_arr.size(); vm_index++) {
             if (Objects.equals(version_manifest_arr.get(vm_index).getAsJsonObject().get("id").getAsString(), versionName)) {
@@ -94,7 +94,7 @@ public class VanillaDownloader {
     private void PrivateCenterDownload(URL versionJson, VanillaInstallProfile profile) throws IOException {
         JsonObject versionJsonObj = new Gson().fromJson(IOUtils.toString(versionJson, StandardCharsets.UTF_8), JsonObject.class);
         PrivateLog4jConfigBuild(versionJsonObj);
-        System.out.println("[INFO]Downloading client.jar file.");
+        System.out.println("[INFO]Vanilla Downloader: Downloading client.jar file.");
         var clientJarUrl = versionJsonObj.getAsJsonObject("downloads").getAsJsonObject("client").get("url").getAsString();
         var versionDir = gameDownloadDir;
         FileUtils.writeByteArrayToFile(new File(versionDir + File.separator + profile.getVersion() + ".jar"), IOUtils.toByteArray(new URL(clientJarUrl)));
@@ -130,7 +130,7 @@ public class VanillaDownloader {
                 String key = asset_json_keys.get(i).getAsString();
                 String hash = asset_json_obj.getAsJsonObject(key).get("hash").getAsString();
                 String path = assetPath + "/" + hash.substring(0, 2) + "/" + hash;
-                System.out.println("[INFO]Downloading asset:" + key);
+                System.out.println("[INFO]Vanilla Downloader: Downloading asset:" + key);
                 try {
                     FileUtils.writeByteArrayToFile(new File(path), IOUtils.toByteArray(PrivateSummonAssetDownloadUrl(hash)));
                 } catch (IOException e) {
@@ -143,7 +143,7 @@ public class VanillaDownloader {
                 String key = asset_json_keys.get(i).getAsString();
                 String hash = asset_json_obj.getAsJsonObject(key).get("hash").getAsString();
                 String path = assetPath + "/" + hash.substring(0, 2) + "/" + hash;
-                System.out.println("[INFO]Downloading asset:" + key);
+                System.out.println("[INFO]Vanilla Downloader: Downloading asset:" + key);
                 try {
                     FileUtils.writeByteArrayToFile(new File(path), IOUtils.toByteArray(PrivateSummonAssetDownloadUrl(hash)));
                 } catch (IOException e) {
@@ -156,7 +156,7 @@ public class VanillaDownloader {
                 String key = asset_json_keys.get(i).getAsString();
                 String hash = asset_json_obj.getAsJsonObject(key).get("hash").getAsString();
                 String path = assetPath + "/" + hash.substring(0, 2) + "/" + hash;
-                System.out.println("[INFO]Downloading asset:" + key);
+                System.out.println("[INFO]Vanilla Downloader: Downloading asset:" + key);
                 try {
                     FileUtils.writeByteArrayToFile(new File(path), IOUtils.toByteArray(PrivateSummonAssetDownloadUrl(hash)));
                 } catch (IOException e) {
@@ -169,7 +169,7 @@ public class VanillaDownloader {
                 String key = asset_json_keys.get(i).getAsString();
                 String hash = asset_json_obj.getAsJsonObject(key).get("hash").getAsString();
                 String path = assetPath + "/" + hash.substring(0, 2) + "/" + hash;
-                System.out.println("[INFO]Downloading asset:" + key);
+                System.out.println("[INFO]Vanilla Downloader: Downloading asset:" + key);
                 try {
                     FileUtils.writeByteArrayToFile(new File(path), IOUtils.toByteArray(PrivateSummonAssetDownloadUrl(hash)));
                 } catch (IOException e) {
@@ -182,7 +182,7 @@ public class VanillaDownloader {
                 String key = asset_json_keys.get(i).getAsString();
                 String hash = asset_json_obj.getAsJsonObject(key).get("hash").getAsString();
                 String path = assetPath + "/" + hash.substring(0, 2) + "/" + hash;
-                System.out.println("[INFO]Downloading asset:" + key);
+                System.out.println("[INFO]Vanilla Downloader: Downloading asset:" + key);
                 try {
                     FileUtils.writeByteArrayToFile(new File(path), IOUtils.toByteArray(PrivateSummonAssetDownloadUrl(hash)));
                 } catch (IOException e) {
@@ -195,7 +195,7 @@ public class VanillaDownloader {
                 String key = asset_json_keys.get(i).getAsString();
                 String hash = asset_json_obj.getAsJsonObject(key).get("hash").getAsString();
                 String path = assetPath + "/" + hash.substring(0, 2) + "/" + hash;
-                System.out.println("[INFO]Downloading asset:" + key);
+                System.out.println("[INFO]Vanilla Downloader: Downloading asset:" + key);
                 try {
                     FileUtils.writeByteArrayToFile(new File(path), IOUtils.toByteArray(PrivateSummonAssetDownloadUrl(hash)));
                 } catch (IOException e) {
@@ -208,7 +208,7 @@ public class VanillaDownloader {
                 String key = asset_json_keys.get(i).getAsString();
                 String hash = asset_json_obj.getAsJsonObject(key).get("hash").getAsString();
                 String path = assetPath + "/" + hash.substring(0, 2) + "/" + hash;
-                System.out.println("[INFO]Downloading asset:" + key);
+                System.out.println("[INFO]Vanilla Downloader: Downloading asset:" + key);
                 try {
                     FileUtils.writeByteArrayToFile(new File(path), IOUtils.toByteArray(PrivateSummonAssetDownloadUrl(hash)));
                 } catch (IOException e) {
@@ -221,7 +221,7 @@ public class VanillaDownloader {
                 String key = asset_json_keys.get(i).getAsString();
                 String hash = asset_json_obj.getAsJsonObject(key).get("hash").getAsString();
                 String path = assetPath + "/" + hash.substring(0, 2) + "/" + hash;
-                System.out.println("[INFO]Downloading asset:" + key);
+                System.out.println("[INFO]Vanilla Downloader: Downloading asset:" + key);
                 try {
                     FileUtils.writeByteArrayToFile(new File(path), IOUtils.toByteArray(PrivateSummonAssetDownloadUrl(hash)));
                 } catch (IOException e) {
@@ -238,7 +238,7 @@ public class VanillaDownloader {
         th7.start();
         th8.start();
 
-        System.out.println("[INFO]Libraries download thread started.");
+        System.out.println("[INFO]Vanilla Downloader: Libraries download thread started.");
         String path = gameDownloadDir + "/libraries/";
         PrivateLibrariesDownload(libraries, path);
     }
@@ -260,7 +260,7 @@ public class VanillaDownloader {
                     String relativePath = downloads_obj.getAsJsonObject("artifact").get("path").getAsString();
                     String absolutePath = libDirPath + "/" + relativePath;
                     String url = downloads_obj.getAsJsonObject("artifact").get("url").getAsString();
-                    System.out.println("[INFO]Downloading libraries:" + libraries.get(i).getAsJsonObject().get("name").getAsString());
+                    System.out.println("[INFO]Vanilla Downloader: Downloading libraries:" + libraries.get(i).getAsJsonObject().get("name").getAsString());
                     try {
                         FileUtils.writeByteArrayToFile(new File(absolutePath), IOUtils.toByteArray(new URL(url)));
                     } catch (IOException e) {
@@ -281,7 +281,7 @@ public class VanillaDownloader {
                         url = downloads_obj.getAsJsonObject("classifiers").getAsJsonObject("natives-osx").get("url").getAsString();
                     }
                     String absolutePath = libDirPath + "/" + relativePath;
-                    System.out.println("[INFO]Downloading native:" + libraries.get(i).getAsJsonObject().get("name").getAsString());
+                    System.out.println("[INFO]Vanilla Downloader: Downloading native:" + libraries.get(i).getAsJsonObject().get("name").getAsString());
                     try {
                         FileUtils.writeByteArrayToFile(new File(absolutePath), IOUtils.toByteArray(new URL(url)));
                         var nativeDir = libDirPath.replace("/libraries", "/natives/");
@@ -311,7 +311,7 @@ public class VanillaDownloader {
                     String relativePath = downloads_obj.getAsJsonObject("artifact").get("path").getAsString();
                     String absolutePath = libDirPath + "/" + relativePath;
                     String url = downloads_obj.getAsJsonObject("artifact").get("url").getAsString();
-                    System.out.println("[INFO]Downloading libraries:" + libraries.get(i).getAsJsonObject().get("name").getAsString());
+                    System.out.println("[INFO]Vanilla Downloader: Downloading libraries:" + libraries.get(i).getAsJsonObject().get("name").getAsString());
                     try {
                         FileUtils.writeByteArrayToFile(new File(absolutePath), IOUtils.toByteArray(new URL(url)));
                     } catch (IOException e) {
@@ -332,7 +332,7 @@ public class VanillaDownloader {
                         url = downloads_obj.getAsJsonObject("classifiers").getAsJsonObject("natives-osx").get("url").getAsString();
                     }
                     String absolutePath = libDirPath + "/" + relativePath;
-                    System.out.println("[INFO]Downloading native:" + libraries.get(i).getAsJsonObject().get("name").getAsString());
+                    System.out.println("[INFO]Vanilla Downloader: Downloading native:" + libraries.get(i).getAsJsonObject().get("name").getAsString());
                     try {
                         FileUtils.writeByteArrayToFile(new File(absolutePath), IOUtils.toByteArray(new URL(url)));
                         var nativeDir = libDirPath.replace("/libraries", "/natives/");
@@ -362,7 +362,7 @@ public class VanillaDownloader {
                     String relativePath = downloads_obj.getAsJsonObject("artifact").get("path").getAsString();
                     String absolutePath = libDirPath + "/" + relativePath;
                     String url = downloads_obj.getAsJsonObject("artifact").get("url").getAsString();
-                    System.out.println("[INFO]Downloading libraries:" + libraries.get(i).getAsJsonObject().get("name").getAsString());
+                    System.out.println("[INFO]Vanilla Downloader: Downloading libraries:" + libraries.get(i).getAsJsonObject().get("name").getAsString());
                     try {
                         FileUtils.writeByteArrayToFile(new File(absolutePath), IOUtils.toByteArray(new URL(url)));
                     } catch (IOException e) {
@@ -383,7 +383,7 @@ public class VanillaDownloader {
                         url = downloads_obj.getAsJsonObject("classifiers").getAsJsonObject("natives-osx").get("url").getAsString();
                     }
                     String absolutePath = libDirPath + "/" + relativePath;
-                    System.out.println("[INFO]Downloading native:" + libraries.get(i).getAsJsonObject().get("name").getAsString());
+                    System.out.println("[INFO]Vanilla Downloader: Downloading native:" + libraries.get(i).getAsJsonObject().get("name").getAsString());
                     try {
                         FileUtils.writeByteArrayToFile(new File(absolutePath), IOUtils.toByteArray(new URL(url)));
                         var nativeDir = libDirPath.replace("/libraries", "/natives/");
@@ -403,11 +403,11 @@ public class VanillaDownloader {
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
-                } else if ((downloads_obj.getAsJsonObject("artifact").get("path").getAsString().contains("natives-" + System.getProperty("os.name")) && downloads_obj.getAsJsonObject("artifact").get("path").getAsString().contains(System.getProperty("os.arch")))) {
+                } else if (downloads_obj.getAsJsonObject("artifact").get("path").getAsString().contains("natives-" + System.getProperty("os.name")) && downloads_obj.getAsJsonObject("artifact").get("path").getAsString().contains(System.getProperty("os.arch"))) {
                     relativePath = downloads_obj.getAsJsonObject("artifact").get("path").getAsString();
                     url = downloads_obj.getAsJsonObject("artifact").get("url").getAsString();
                     String absolutePath = libDirPath + "/" + relativePath;
-                    System.out.println("[INFO]Downloading native:" + libraries.get(i).getAsJsonObject().get("name").getAsString());
+                    System.out.println("[INFO]Vanilla Downloader: Downloading native:" + libraries.get(i).getAsJsonObject().get("name").getAsString());
                     try {
                         FileUtils.writeByteArrayToFile(new File(absolutePath), IOUtils.toByteArray(new URL(url)));
                         var nativeDir = libDirPath.replace("/libraries", "/natives/");
@@ -437,7 +437,7 @@ public class VanillaDownloader {
                     String relativePath = downloads_obj.getAsJsonObject("artifact").get("path").getAsString();
                     String absolutePath = libDirPath + "/" + relativePath;
                     String url = downloads_obj.getAsJsonObject("artifact").get("url").getAsString();
-                    System.out.println("[INFO]Downloading libraries:" + libraries.get(i).getAsJsonObject().get("name").getAsString());
+                    System.out.println("[INFO]Vanilla Downloader: Downloading libraries:" + libraries.get(i).getAsJsonObject().get("name").getAsString());
                     try {
                         FileUtils.writeByteArrayToFile(new File(absolutePath), IOUtils.toByteArray(new URL(url)));
                     } catch (IOException e) {
@@ -458,7 +458,7 @@ public class VanillaDownloader {
                         url = downloads_obj.getAsJsonObject("classifiers").getAsJsonObject("natives-osx").get("url").getAsString();
                     }
                     String absolutePath = libDirPath + "/" + relativePath;
-                    System.out.println("[INFO]Downloading native:" + libraries.get(i).getAsJsonObject().get("name").getAsString());
+                    System.out.println("[INFO]Vanilla Downloader: Downloading native:" + libraries.get(i).getAsJsonObject().get("name").getAsString());
                     try {
                         FileUtils.writeByteArrayToFile(new File(absolutePath), IOUtils.toByteArray(new URL(url)));
                         var nativeDir = libDirPath.replace("/libraries", "/natives/");

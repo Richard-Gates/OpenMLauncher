@@ -80,8 +80,8 @@ public class ForgeDownloader {
         }
     }
 
-    private static void PrivateInstall(File Installer, String version) throws IOException, InterruptedException, NullInstallerException {
-        String[] versionList = version.split("\\.");
+    private static void PrivateInstall(File Installer, String mcVersion) throws IOException, InterruptedException, NullInstallerException {
+        String[] versionList = mcVersion.split("\\.");
         if (Integer.parseInt(versionList[1]) <= 13) {
             new ForgeOldInstaller(Installer).build();
         } else {
@@ -209,10 +209,23 @@ public class ForgeDownloader {
                                         getInstaller().getPath().replace("forge-installer.jar", "libraries/" + path)
                                 )
                         );
+                        FileUtils.copyFile(
+                                new File(
+                                        getInstaller().getPath().replace("forge-installer.jar", packagePath[2].split("-")[0] + ".jar")
+                                ),
+                                new File(
+                                        getInstaller().getPath().replace("forge-installer.jar", versionName + ".jar")
+                                )
+                        );
+                        FileUtils.delete(
+                                new File(
+                                        getInstaller().getPath().replace("forge-installer.jar", packagePath[2].split("-")[0] + ".jar")
+                                )
+                        );
                         JsonObject vanillaJson = new Gson().fromJson(
                                 FileUtils.readFileToString(
                                         new File(
-                                                getInstaller().getPath().replace("forge-installer.jar", packagePath[2].split("-")[0] + ".json")
+                                                getInstaller().getPath().replace("forge-installer.jar", packagePath[2].replace("-", "-forge-") + ".json")
                                         ),
                                         StandardCharsets.UTF_8
                                 ),
@@ -221,7 +234,7 @@ public class ForgeDownloader {
                         JsonObject forgeJson = new Gson().fromJson(
                                 FileUtils.readFileToString(
                                         new File(
-                                                getInstaller().getPath().replace("forge-installer.jar", packagePath[2].replace("-", "-forge-") + ".json")
+                                                getInstaller().getPath().replace("forge-installer.jar", "temp/version.json")
                                         ),
                                         StandardCharsets.UTF_8
                                 ),
@@ -279,8 +292,9 @@ public class ForgeDownloader {
                     }
                 }
             }
-            deleteTemp(versionName);
         }
+
+
 
         private void deleteTemp(String versionName) throws IOException {
             File temp = new File(
@@ -333,11 +347,11 @@ public class ForgeDownloader {
     static class ForgeNewInstaller {
         private File installer;
 
-        public ForgeNewInstaller() {
+        public ForgeNewInstaller() throws IOException {
 
         }
 
-        public ForgeNewInstaller(File installer) {
+        public ForgeNewInstaller(File installer) throws IOException {
             this.installer = installer;
         }
 
@@ -352,7 +366,7 @@ public class ForgeDownloader {
 
 
         private void buildTemp() throws IOException {
-            JarFile installer = new JarFile(this.getInstaller());
+            JarFile installer = new JarFile(getInstaller());
             for (Enumeration<JarEntry> entryEnumeration = installer.entries(); entryEnumeration.hasMoreElements(); ) {
                 JarEntry entry = entryEnumeration.nextElement();
 
@@ -371,6 +385,17 @@ public class ForgeDownloader {
             librariesDownload();
         }
 
+        private void removeVersionJson(String versionName) throws IOException {
+            FileUtils.copyFile(
+                    new File(
+                            getInstaller().getPath().replace("forge-installer.jar", "temp/version.json")
+                    ),
+                    new File(
+                            getInstaller().getPath().replace("forge-installer.jar", versionName + ".json")
+                    )
+            );
+        }
+
         private void librariesDownload() throws IOException {
             JsonObject versionJson = new Gson().fromJson(
                     FileUtils.readFileToString(
@@ -382,6 +407,7 @@ public class ForgeDownloader {
                     JsonObject.class
             );
             JsonArray libraries = versionJson.getAsJsonArray("libraries");
+            String versionName = "";
             for (JsonElement library : libraries) {
                 String path = library.getAsJsonObject()
                         .get("downloads").getAsJsonObject()
@@ -392,96 +418,167 @@ public class ForgeDownloader {
                         .get("artifact").getAsJsonObject()
                         .get("url").getAsString();
                 String name = library.getAsJsonObject().get("name").getAsString();
-                System.out.println("[INFO]OldForge Builder: Downloading libraries:" + name);
-                FileUtils.writeByteArrayToFile(
-                        new File(
-                                getInstaller().getPath().replace(
-                                        "forge-installer.jar",
-                                        "libraries/" + path)
-                        ),
-                        IOUtils.toByteArray(
-                                new URL(url)
-                        )
-                );
-            }
+                System.out.println("[INFO]NewForge Builder: Downloading libraries:" + name);
+                if (!path.contains("net/minecraftforge/forge/")) {
+                    FileUtils.writeByteArrayToFile(
+                            new File(
+                                    getInstaller().getPath().replace(
+                                            "forge-installer.jar",
+                                            "libraries/" + path)
+                            ),
+                            IOUtils.toByteArray(
+                                    new URL(url)
+                            )
+                    );
+                } else {
+                    if (
+                            library.getAsJsonObject().get("name").getAsString()
+                                    .contains("net.minecraftforge:forge")
+                    ) {
+                        String[] packagePath = library.getAsJsonObject().get("name").getAsString().split(":");
+                        removeVersionJson(packagePath[2].replace("-", "-forge-"));
+                        versionName = packagePath[2].replace("-", "-forge-");
+                        FileUtils.copyFile(
+                                new File(
+                                        getInstaller().getPath().replace("forge-installer.jar", "temp/maven/" + path)
+                                ),
+                                new File(
+                                        getInstaller().getPath().replace("forge-installer.jar", "libraries/" + path)
+                                )
+                        );
+                        FileUtils.copyFile(
+                                new File(
+                                        getInstaller().getPath().replace("forge-installer.jar", packagePath[2].split("-")[0] + ".jar")
+                                ),
+                                new File(
+                                        getInstaller().getPath().replace("forge-installer.jar", versionName + ".jar")
+                                )
+                        );
+                        FileUtils.delete(
+                                new File(
+                                        getInstaller().getPath().replace("forge-installer.jar", packagePath[2].split("-")[0] + ".jar")
+                                )
+                        );
+                        JsonObject vanillaJson = new Gson().fromJson(
+                                FileUtils.readFileToString(
+                                        new File(
+                                                getInstaller().getPath().replace("forge-installer.jar", packagePath[2].replace("-", "-forge-") + ".json")
+                                        ),
+                                        StandardCharsets.UTF_8
+                                ),
+                                JsonObject.class
+                        );
+                        JsonObject forgeJson = new Gson().fromJson(
+                                FileUtils.readFileToString(
+                                        new File(
+                                                getInstaller().getPath().replace("forge-installer.jar", "temp/version.json")
+                                        ),
+                                        StandardCharsets.UTF_8
+                                ),
+                                JsonObject.class
+                        );
+                        JsonObject mergeJson = versionJsonMerge(forgeJson, vanillaJson);
+                        mergeJson.add(
+                                "clientVersion",
+                                mergeJson.get("inheritsFrom")
+                        );
+                        FileUtils.writeByteArrayToFile(
+                                new File(
+                                        getInstaller().getPath().replace("forge-installer.jar", packagePath[2].replace("-", "-forge-") + ".json")
+                                ),
+                                mergeJson.toString().getBytes()
+                        );
+                        FileUtils.delete(
+                                new File(getInstaller().getPath().replace("forge-installer.jar", packagePath[2].split("-")[0]) + ".json")
+                        );
+                    }
+                }
+                if (library.getAsJsonObject().has("classifiers")) {
+                    String libDirPath = getInstaller().getPath().replace("forge-installer.jar", "libraries/");
+                    String relativePath = "";
+                    String nativeUrl = "";
+                    if (System.getProperty("os.name").contains("Windows") && library.getAsJsonObject().getAsJsonObject("classifiers").has("natives-windows")) {
+                        relativePath = library.getAsJsonObject().getAsJsonObject("classifiers").getAsJsonObject("natives-windows").get("path").getAsString();
+                        nativeUrl = library.getAsJsonObject().getAsJsonObject("classifiers").getAsJsonObject("natives-windows").get("url").getAsString();
+                    } else if (System.getProperty("os.name").contains("Linux") && library.getAsJsonObject().getAsJsonObject("classifiers").has("natives-linux")) {
+                        relativePath = library.getAsJsonObject().getAsJsonObject("classifiers").getAsJsonObject("natives-linux").get("path").getAsString();
+                        nativeUrl = library.getAsJsonObject().getAsJsonObject("classifiers").getAsJsonObject("natives-linux").get("url").getAsString();
+                    } else if (System.getProperty("os.name").contains("MacOS") && library.getAsJsonObject().getAsJsonObject("classifiers").has("natives-osx")) {
+                        relativePath = library.getAsJsonObject().getAsJsonObject("classifiers").getAsJsonObject("natives-osx").get("path").getAsString();
+                        nativeUrl = library.getAsJsonObject().getAsJsonObject("classifiers").getAsJsonObject("natives-osx").get("url").getAsString();
+                    }
+                    String absolutePath = libDirPath + "/" + relativePath;
+                    try {
+                        FileUtils.writeByteArrayToFile(new File(absolutePath), IOUtils.toByteArray(new URL(nativeUrl)));
+                        var nativeDir = libDirPath.replace("/libraries", "/natives/");
+                        var jarFile = new JarFile(absolutePath);
+                        var entries = jarFile.entries();
+                        while (entries.hasMoreElements()) {
+                            var jarEntry = entries.nextElement();
+                            if (jarEntry.isDirectory() || jarEntry.getName().contains("META-INF")) {
+                                continue;
+                            }
 
-            JsonObject vanillaJson = new Gson().fromJson(
-                    FileUtils.readFileToString(
-                            new File(
-                                    getInstaller().getPath().replace("forge-installer.jar", versionJson.get("id").getAsString() + ".json")
-                            ),
-                            StandardCharsets.UTF_8
-                    ),
-                    JsonObject.class
-            );
-            JsonObject forgeJson = new Gson().fromJson(
-                    FileUtils.readFileToString(
-                            new File(
-                                    getInstaller().getPath().replace("forge-installer.jar", "temp" + File.separator + "version.json")
-                            ),
-                            StandardCharsets.UTF_8
-                    ),
-                    JsonObject.class
-            );
-            JsonObject mergeJson = versionJsonMerge(forgeJson, vanillaJson);
-            mergeJson.add(
-                    "clientVersion",
-                    mergeJson.get("inheritsFrom")
-            );
-            FileUtils.writeByteArrayToFile(
-                    new File(
-                            getInstaller().getPath().replace("forge-installer.jar", versionJson.get("id").getAsString() + ".json")
-                    ),
-                    mergeJson.toString().getBytes()
-            );
-            String[] version = versionJson.get("id").getAsString().split("-");
-            FileUtils.copyFile(
-                    new File(
-                            getInstaller().getPath().replace("forge-installer.jar", version[0] + ".jar")
-                    ),
-                    new File(
-                            getInstaller().getPath().replace("forge-installer.jar", mergeJson.get("id").getAsString() + ".jar")
-                    )
-            );
-            mergeJson.remove("inheritsFrom");
-            FileUtils.delete(
-                    new File(
-                            getInstaller().getPath().replace("forge-installer.jar", version[0] + ".jar")
-                    )
-            );
-            deleteTemp();
+                            var inputStream = jarFile.getInputStream(jarEntry);
+                            FileUtils.writeByteArrayToFile(new File(nativeDir, jarEntry.getName()), IOUtils.toByteArray(inputStream));
+                            inputStream.close();
+                        }
+                        jarFile.close();
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
         }
 
-        private void deleteTemp() throws IOException {
+        private void deleteTemp(String versionName) throws IOException {
             File temp = new File(
                     getInstaller().getPath().replace("forge-installer.jar", "temp/")
             );
 
             FileUtils.delete(getInstaller());
             FileUtils.deleteDirectory(temp);
+
+            String[] version = versionName.split("-");
+            FileUtils.copyFile(
+                    new File(
+                            getInstaller().getPath().replace("forge-installer.jar", version[0] + ".jar")
+                    ),
+                    new File(
+                            getInstaller().getPath().replace("forge-installer.jar", versionName + ".jar")
+                    )
+            );
+            FileUtils.delete(
+                    new File(
+                            getInstaller().getPath().replace("forge-installer.jar", version[0] + ".jar")
+                    )
+            );
         }
 
-        private JsonObject versionJsonMerge(JsonObject firstObj, JsonObject secondObj) {
-            for (String key : secondObj.keySet()) {
-                if (!firstObj.has(key)) {
-                    firstObj.add(key, secondObj.get(key));
-                }
+    private JsonObject versionJsonMerge(JsonObject firstObj, JsonObject secondObj) {
+        for (String key : secondObj.keySet()) {
+            if (!firstObj.has(key)) {
+                firstObj.add(key, secondObj.get(key));
             }
-            for (JsonElement element : secondObj.getAsJsonArray("libraries")) {
-                firstObj.getAsJsonArray("libraries").add(element);
-            }
-            for (JsonElement element : secondObj.getAsJsonObject("arguments").getAsJsonArray("game")) {
-                firstObj.getAsJsonObject("arguments").getAsJsonArray("game").add(element);
-            }
-            return firstObj;
         }
-
-        public void build() throws NullInstallerException, IOException {
-            if (this.installer == null) {
-                throw new NullInstallerException("The installer is not valid.Please check forge-installer path.");
-            }
-
-            this.buildTemp();
+        for (JsonElement element : secondObj.getAsJsonArray("libraries")) {
+            firstObj.getAsJsonArray("libraries").add(element);
         }
+        for (JsonElement element : secondObj.getAsJsonObject("arguments").getAsJsonArray("game")) {
+            firstObj.getAsJsonObject("arguments").getAsJsonArray("game").add(element);
+        }
+        for (JsonElement element : secondObj.getAsJsonObject("arguments").getAsJsonArray("jvm")) {
+            firstObj.getAsJsonObject("arguments").getAsJsonArray("jvm").add(element);
+        }
+        return firstObj;
     }
+
+    public void build() throws NullInstallerException, IOException {
+        if (this.installer == null) {
+            throw new NullInstallerException("The installer is not valid.Please check forge-installer path.");
+        }
+
+        this.buildTemp();
+    }
+}
 }
