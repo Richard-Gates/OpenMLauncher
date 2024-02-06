@@ -34,14 +34,12 @@ public class VanillaDownloader {
     }
 
     public void removeDownloadFinishListener(DownloadFinishEventListener listener) {
-        if (listeners == null)
-            return;
+        if (listeners == null) return;
         listeners.remove(listener);
     }
 
     protected void fireWorkspaceStarted(String type) {
-        if (listeners == null)
-            return;
+        if (listeners == null) return;
         DownloadFinishEvent event = new DownloadFinishEvent(this, type);
         notifyListeners(event);
     }
@@ -52,6 +50,7 @@ public class VanillaDownloader {
             listener.DownloadFinishEvent(event);
         }
     }
+
     public VanillaDownloader setGameDownloadDir(String newGameDownloadDir) {
         gameDownloadDir = newGameDownloadDir;
         return this;
@@ -79,7 +78,7 @@ public class VanillaDownloader {
     }
 
     public void build(VanillaInstallProfile profile) throws IOException {
-        verName = profile.getVersion();
+        verName = profile.getVersionName();
         gameDownloadDir = System.getProperty("oml.gameDir") + "/versions/" + verName;
         String versionName = profile.getVersion();
         System.out.println("[INFO]Reading version_manifest.json file.");
@@ -102,7 +101,7 @@ public class VanillaDownloader {
         String assetsIndexUrl = versionJsonObj.getAsJsonObject("assetIndex").get("url").getAsString();
         Thread asset_download = new Thread(() -> {
             try {
-                PrivateAssetDownload(new URL(assetsIndexUrl), versionDir + "/assets/objects/", versionJsonObj.getAsJsonObject("assetIndex").get("id").getAsString(),  versionJsonObj.getAsJsonArray("libraries"));
+                PrivateAssetDownload(new URL(assetsIndexUrl), versionDir + "/assets/objects/", versionJsonObj.getAsJsonObject("assetIndex").get("id").getAsString(), versionJsonObj.getAsJsonArray("libraries"));
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -118,26 +117,14 @@ public class VanillaDownloader {
         writeGameJsonThread.start();
     }
 
-    private void PrivateAssetDownload(URL asset_index, String assetPath,String AssetsId,JsonArray libraries) throws IOException {
+    private void PrivateAssetDownload(URL asset_index, String assetPath, String AssetsId, JsonArray libraries) throws IOException {
         JsonObject asset_json_obj = new Gson().fromJson(IOUtils.toString(asset_index, StandardCharsets.UTF_8), JsonObject.class).getAsJsonObject("objects");
         JsonArray asset_json_keys = new Gson().fromJson("[]", JsonArray.class);
         for (String s : asset_json_obj.keySet()) {
             asset_json_keys.add(s);
         }
-        File assets = new File(
-                gameDownloadDir
-                + File.separator
-                + "assets"
-                + File.separator
-                + "indexes"
-                + File.separator
-                + AssetsId
-                + ".json"
-        );
-        FileUtils.writeByteArrayToFile(
-                assets,
-                IOUtils.toByteArray(asset_index)
-        );
+        File assets = new File(gameDownloadDir + File.separator + "assets" + File.separator + "indexes" + File.separator + AssetsId + ".json");
+        FileUtils.writeByteArrayToFile(assets, IOUtils.toByteArray(asset_index));
         Thread th1 = new Thread(() -> {
             for (int i = 0; i < asset_json_keys.size() / 8; i++) {
                 String key = asset_json_keys.get(i).getAsString();
@@ -307,7 +294,7 @@ public class VanillaDownloader {
                             }
 
                             var inputStream = jarFile.getInputStream(jarEntry);
-                            FileUtils.writeByteArrayToFile(new File(nativeDir, jarEntry.getName()), IOUtils.toByteArray(inputStream));
+                            FileUtils.writeByteArrayToFile(new File(nativeDir + File.separator + jarEntry.getName()), IOUtils.toByteArray(inputStream));
                             inputStream.close();
                         }
                         jarFile.close();
@@ -358,7 +345,7 @@ public class VanillaDownloader {
                             }
 
                             var inputStream = jarFile.getInputStream(jarEntry);
-                            FileUtils.writeByteArrayToFile(new File(nativeDir, jarEntry.getName()), IOUtils.toByteArray(inputStream));
+                            FileUtils.writeByteArrayToFile(new File(nativeDir + File.separator + jarEntry.getName()), IOUtils.toByteArray(inputStream));
                             inputStream.close();
                         }
                         jarFile.close();
@@ -382,9 +369,9 @@ public class VanillaDownloader {
                         throw new RuntimeException(e);
                     }
                 }
+                String relativePath = "";
+                String url = "";
                 if (downloads_obj.has("classifiers")) {
-                    String relativePath = "";
-                    String url = "";
                     if (System.getProperty("os.name").contains("Windows") && downloads_obj.getAsJsonObject("classifiers").has("natives-windows")) {
                         relativePath = downloads_obj.getAsJsonObject("classifiers").getAsJsonObject("natives-windows").get("path").getAsString();
                         url = downloads_obj.getAsJsonObject("classifiers").getAsJsonObject("natives-windows").get("url").getAsString();
@@ -409,7 +396,31 @@ public class VanillaDownloader {
                             }
 
                             var inputStream = jarFile.getInputStream(jarEntry);
-                            FileUtils.writeByteArrayToFile(new File(nativeDir, jarEntry.getName()), IOUtils.toByteArray(inputStream));
+                            FileUtils.writeByteArrayToFile(new File(nativeDir + File.separator + jarEntry.getName()), IOUtils.toByteArray(inputStream));
+                            inputStream.close();
+                        }
+                        jarFile.close();
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                } else if ((downloads_obj.getAsJsonObject("artifact").get("path").getAsString().contains("natives-" + System.getProperty("os.name")) && downloads_obj.getAsJsonObject("artifact").get("path").getAsString().contains(System.getProperty("os.arch")))) {
+                    relativePath = downloads_obj.getAsJsonObject("artifact").get("path").getAsString();
+                    url = downloads_obj.getAsJsonObject("artifact").get("url").getAsString();
+                    String absolutePath = libDirPath + "/" + relativePath;
+                    System.out.println("[INFO]Downloading native:" + libraries.get(i).getAsJsonObject().get("name").getAsString());
+                    try {
+                        FileUtils.writeByteArrayToFile(new File(absolutePath), IOUtils.toByteArray(new URL(url)));
+                        var nativeDir = libDirPath.replace("/libraries", "/natives/");
+                        var jarFile = new JarFile(absolutePath);
+                        var entries = jarFile.entries();
+                        while (entries.hasMoreElements()) {
+                            var jarEntry = entries.nextElement();
+                            if (jarEntry.isDirectory() || jarEntry.getName().contains("META-INF")) {
+                                continue;
+                            }
+
+                            var inputStream = jarFile.getInputStream(jarEntry);
+                            FileUtils.writeByteArrayToFile(new File(nativeDir + File.separator + jarEntry.getName()), IOUtils.toByteArray(inputStream));
                             inputStream.close();
                         }
                         jarFile.close();
@@ -460,7 +471,7 @@ public class VanillaDownloader {
                             }
 
                             var inputStream = jarFile.getInputStream(jarEntry);
-                            FileUtils.writeByteArrayToFile(new File(nativeDir, jarEntry.getName()), IOUtils.toByteArray(inputStream));
+                            FileUtils.writeByteArrayToFile(new File(nativeDir + File.separator + jarEntry.getName()), IOUtils.toByteArray(inputStream));
                             inputStream.close();
                         }
                         jarFile.close();
@@ -477,20 +488,10 @@ public class VanillaDownloader {
     }
 
     private void PrivateLog4jConfigBuild(JsonObject versionJson) throws IOException {
-        JsonObject client = versionJson.getAsJsonObject("logging")
-                .getAsJsonObject("client");
+        JsonObject client = versionJson.getAsJsonObject("logging").getAsJsonObject("client");
         String url = client.getAsJsonObject("file").get("url").getAsString();
         String id = client.getAsJsonObject("file").get("id").getAsString();
-        File config = new File(
-                gameDownloadDir
-                + File.separator
-                + "log4j"
-                + File.separator
-                + id
-        );
-        FileUtils.writeByteArrayToFile(
-                config,
-                IOUtils.toByteArray(new URL(url))
-        );
+        File config = new File(gameDownloadDir + File.separator + "log4j" + File.separator + id);
+        FileUtils.writeByteArrayToFile(config, IOUtils.toByteArray(new URL(url)));
     }
 }

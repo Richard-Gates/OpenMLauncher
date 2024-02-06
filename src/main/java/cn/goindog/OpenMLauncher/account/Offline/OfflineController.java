@@ -24,16 +24,17 @@ public class OfflineController {
             } else {
                 user_config = new JsonObject();
                 user_config.add("users", new JsonArray());
+                user_config.addProperty("selector", 0);
             }
 
             JsonObject user = new JsonObject();
-            user.addProperty("type", "offline");
+            user.addProperty("type", "legacy");
 
             JsonObject profile = new JsonObject();
             profile.addProperty("name", user_name);
             profile.addProperty("id", uuid.toString());
             profile.add("profileActions", new JsonObject());
-            profile.addProperty("minecraft_token", token);
+            user.addProperty("minecraft_token", token);
 
             JsonArray skins = new JsonArray();
             JsonObject skin = new JsonObject();

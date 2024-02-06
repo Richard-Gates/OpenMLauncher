@@ -22,12 +22,14 @@ public class MicrosoftOAuthOptions {
         return method;
     }
 
-    public void setMethod(MicrosoftOAuthCodeMethod method) {
+    public MicrosoftOAuthOptions setMethod(MicrosoftOAuthCodeMethod method) {
         this.method = method;
+        return this;
     }
 
-    public void addScope(String scope) {
+    public MicrosoftOAuthOptions addScope(String scope) {
         scopes.add(scope);
+        return this;
     }
 
     public void removeScope(String scope) {
@@ -40,8 +42,9 @@ public class MicrosoftOAuthOptions {
         }
     }
 
-    public void setOAuthType(MicrosoftOAuthType type) {
+    public MicrosoftOAuthOptions setOAuthType(MicrosoftOAuthType type) {
         this.type = type;
+        return this;
     }
 
 }

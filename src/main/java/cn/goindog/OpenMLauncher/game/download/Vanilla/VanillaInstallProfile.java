@@ -10,6 +10,7 @@ import java.net.HttpURLConnection;
 
 public class VanillaInstallProfile {
     private String version = "";
+    private String versionName = version;
     public static String LATEST_RELEASES_VERSION = "";
     public static String LATEST_SNAPSHOT_VERSION = "";
 
@@ -50,6 +51,15 @@ public class VanillaInstallProfile {
 
     public VanillaInstallProfile setVersion(String version) {
         this.version = version;
+        return this;
+    }
+
+    public String getVersionName() {
+        return versionName;
+    }
+
+    public VanillaInstallProfile setVersionName(String versionName) {
+        this.versionName = versionName;
         return this;
     }
 }
