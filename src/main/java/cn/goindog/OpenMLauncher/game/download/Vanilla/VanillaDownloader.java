@@ -96,25 +96,18 @@ public class VanillaDownloader {
         PrivateLog4jConfigBuild(versionJsonObj);
         System.out.println("[INFO]Vanilla Downloader: Downloading client.jar file.");
         var clientJarUrl = versionJsonObj.getAsJsonObject("downloads").getAsJsonObject("client").get("url").getAsString();
-        var versionDir = gameDownloadDir;
-        FileUtils.writeByteArrayToFile(new File(versionDir + File.separator + profile.getVersion() + ".jar"), IOUtils.toByteArray(new URL(clientJarUrl)));
+        FileUtils.writeByteArrayToFile(new File(gameDownloadDir + File.separator + profile.getVersionName() + ".jar"), IOUtils.toByteArray(new URL(clientJarUrl)));
         String assetsIndexUrl = versionJsonObj.getAsJsonObject("assetIndex").get("url").getAsString();
-        Thread asset_download = new Thread(() -> {
-            try {
-                PrivateAssetDownload(new URL(assetsIndexUrl), versionDir + "/assets/objects/", versionJsonObj.getAsJsonObject("assetIndex").get("id").getAsString(), versionJsonObj.getAsJsonArray("libraries"));
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        });
-        Thread writeGameJsonThread = new Thread(() -> {
-            try {
-                FileUtils.writeByteArrayToFile(new File(versionDir + "/" + verName + ".json"), IOUtils.toByteArray(versionJson));
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        });
-        asset_download.start();
-        writeGameJsonThread.start();
+        PrivateAssetDownload(new URL(assetsIndexUrl), System.getProperty("oml.gameDir") + "/assets/objects/", versionJsonObj.getAsJsonObject("assetIndex").get("id").getAsString(), versionJsonObj.getAsJsonArray("libraries"));
+        writeVersionJson(gameDownloadDir, versionJson, profile);
+    }
+
+    private void writeVersionJson(String versionDir, URL versionJson,VanillaInstallProfile profile) {
+        try {
+            FileUtils.writeByteArrayToFile(new File(versionDir + "/" + profile.getVersion() + ".json"), IOUtils.toByteArray(versionJson));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private void PrivateAssetDownload(URL asset_index, String assetPath, String AssetsId, JsonArray libraries) throws IOException {
@@ -123,7 +116,7 @@ public class VanillaDownloader {
         for (String s : asset_json_obj.keySet()) {
             asset_json_keys.add(s);
         }
-        File assets = new File(gameDownloadDir + File.separator + "assets" + File.separator + "indexes" + File.separator + AssetsId + ".json");
+        File assets = new File(assetPath.replace("objects", "indexes") + File.separator + AssetsId + ".json");
         FileUtils.writeByteArrayToFile(assets, IOUtils.toByteArray(asset_index));
         Thread th1 = new Thread(() -> {
             for (int i = 0; i < asset_json_keys.size() / 8; i++) {
@@ -239,7 +232,7 @@ public class VanillaDownloader {
         th8.start();
 
         System.out.println("[INFO]Vanilla Downloader: Libraries download thread started.");
-        String path = gameDownloadDir + "/libraries/";
+        String path = System.getProperty("oml.gameDir") + "/libraries/";
         PrivateLibrariesDownload(libraries, path);
     }
 
@@ -284,7 +277,14 @@ public class VanillaDownloader {
                     System.out.println("[INFO]Vanilla Downloader: Downloading native:" + libraries.get(i).getAsJsonObject().get("name").getAsString());
                     try {
                         FileUtils.writeByteArrayToFile(new File(absolutePath), IOUtils.toByteArray(new URL(url)));
-                        var nativeDir = libDirPath.replace("/libraries", "/natives/");
+                        var nativeDir = System.getProperty("oml.gameDir")
+                                    + File.separator
+                                    + "versions"
+                                    + File.separator
+                                    + verName
+                                    + File.separator
+                                    + "natives"
+                                    + File.separator;
                         var jarFile = new JarFile(absolutePath);
                         var entries = jarFile.entries();
                         while (entries.hasMoreElements()) {
@@ -300,6 +300,48 @@ public class VanillaDownloader {
                         jarFile.close();
                     } catch (IOException e) {
                         throw new RuntimeException(e);
+                    }
+                } else if (
+                        downloads_obj.has("rules")
+                                &&
+                                downloads_obj.getAsJsonArray("rules").get(0).getAsJsonObject().has("os")
+                ) {
+                    String os_name = downloads_obj.getAsJsonArray("rules")
+                            .get(0).getAsJsonObject()
+                            .getAsJsonObject("os")
+                            .get("name").getAsString();
+                    JsonObject artifact = downloads_obj.getAsJsonObject("artifact");
+                    if (System.getProperty("os.name").contains(os_name)) {
+                        String relativePath = artifact.get("path").getAsString();
+                        String url = artifact.get("url").getAsString();
+                        String absolutePath = libDirPath + "/" + relativePath;
+                        System.out.println("[INFO]Vanilla Downloader: Downloading native:" + libraries.get(i).getAsJsonObject().get("name").getAsString());
+                        try {
+                            FileUtils.writeByteArrayToFile(new File(absolutePath), IOUtils.toByteArray(new URL(url)));
+                            var nativeDir = System.getProperty("oml.gameDir")
+                                    + File.separator
+                                    + "versions"
+                                    + File.separator
+                                    + verName
+                                    + File.separator
+                                    + "natives"
+                                    + File.separator;
+                            var jarFile = new JarFile(absolutePath);
+                            var entries = jarFile.entries();
+                            while (entries.hasMoreElements()) {
+                                var jarEntry = entries.nextElement();
+                                if (jarEntry.isDirectory() || jarEntry.getName().contains("META-INF")) {
+                                    continue;
+                                }
+
+                                var inputStream = jarFile.getInputStream(jarEntry);
+                                FileUtils.writeByteArrayToFile(new File(nativeDir + File.separator + jarEntry.getName()), IOUtils.toByteArray(inputStream));
+                                inputStream.close();
+                            }
+                            jarFile.close();
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
                     }
                 }
             }
@@ -335,7 +377,14 @@ public class VanillaDownloader {
                     System.out.println("[INFO]Vanilla Downloader: Downloading native:" + libraries.get(i).getAsJsonObject().get("name").getAsString());
                     try {
                         FileUtils.writeByteArrayToFile(new File(absolutePath), IOUtils.toByteArray(new URL(url)));
-                        var nativeDir = libDirPath.replace("/libraries", "/natives/");
+                        var nativeDir = System.getProperty("oml.gameDir")
+                                    + File.separator
+                                    + "versions"
+                                    + File.separator
+                                    + verName
+                                    + File.separator
+                                    + "natives"
+                                    + File.separator;
                         var jarFile = new JarFile(absolutePath);
                         var entries = jarFile.entries();
                         while (entries.hasMoreElements()) {
@@ -351,6 +400,48 @@ public class VanillaDownloader {
                         jarFile.close();
                     } catch (IOException e) {
                         throw new RuntimeException(e);
+                    }
+                } else if (
+                        downloads_obj.has("rules")
+                                &&
+                                downloads_obj.getAsJsonArray("rules").get(0).getAsJsonObject().has("os")
+                ) {
+                    String os_name = downloads_obj.getAsJsonArray("rules")
+                            .get(0).getAsJsonObject()
+                            .getAsJsonObject("os")
+                            .get("name").getAsString();
+                    JsonObject artifact = downloads_obj.getAsJsonObject("artifact");
+                    if (System.getProperty("os.name").contains(os_name)) {
+                        String relativePath = artifact.get("path").getAsString();
+                        String url = artifact.get("url").getAsString();
+                        String absolutePath = libDirPath + "/" + relativePath;
+                        System.out.println("[INFO]Vanilla Downloader: Downloading native:" + libraries.get(i).getAsJsonObject().get("name").getAsString());
+                        try {
+                            FileUtils.writeByteArrayToFile(new File(absolutePath), IOUtils.toByteArray(new URL(url)));
+                            var nativeDir = System.getProperty("oml.gameDir")
+                                    + File.separator
+                                    + "versions"
+                                    + File.separator
+                                    + verName
+                                    + File.separator
+                                    + "natives"
+                                    + File.separator;
+                            var jarFile = new JarFile(absolutePath);
+                            var entries = jarFile.entries();
+                            while (entries.hasMoreElements()) {
+                                var jarEntry = entries.nextElement();
+                                if (jarEntry.isDirectory() || jarEntry.getName().contains("META-INF")) {
+                                    continue;
+                                }
+
+                                var inputStream = jarFile.getInputStream(jarEntry);
+                                FileUtils.writeByteArrayToFile(new File(nativeDir + File.separator + jarEntry.getName()), IOUtils.toByteArray(inputStream));
+                                inputStream.close();
+                            }
+                            jarFile.close();
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
                     }
                 }
             }
@@ -386,7 +477,14 @@ public class VanillaDownloader {
                     System.out.println("[INFO]Vanilla Downloader: Downloading native:" + libraries.get(i).getAsJsonObject().get("name").getAsString());
                     try {
                         FileUtils.writeByteArrayToFile(new File(absolutePath), IOUtils.toByteArray(new URL(url)));
-                        var nativeDir = libDirPath.replace("/libraries", "/natives/");
+                        var nativeDir = System.getProperty("oml.gameDir")
+                                    + File.separator
+                                    + "versions"
+                                    + File.separator
+                                    + verName
+                                    + File.separator
+                                    + "natives"
+                                    + File.separator;
                         var jarFile = new JarFile(absolutePath);
                         var entries = jarFile.entries();
                         while (entries.hasMoreElements()) {
@@ -403,29 +501,47 @@ public class VanillaDownloader {
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
-                } else if (downloads_obj.getAsJsonObject("artifact").get("path").getAsString().contains("natives-" + System.getProperty("os.name")) && downloads_obj.getAsJsonObject("artifact").get("path").getAsString().contains(System.getProperty("os.arch"))) {
-                    relativePath = downloads_obj.getAsJsonObject("artifact").get("path").getAsString();
-                    url = downloads_obj.getAsJsonObject("artifact").get("url").getAsString();
-                    String absolutePath = libDirPath + "/" + relativePath;
-                    System.out.println("[INFO]Vanilla Downloader: Downloading native:" + libraries.get(i).getAsJsonObject().get("name").getAsString());
-                    try {
-                        FileUtils.writeByteArrayToFile(new File(absolutePath), IOUtils.toByteArray(new URL(url)));
-                        var nativeDir = libDirPath.replace("/libraries", "/natives/");
-                        var jarFile = new JarFile(absolutePath);
-                        var entries = jarFile.entries();
-                        while (entries.hasMoreElements()) {
-                            var jarEntry = entries.nextElement();
-                            if (jarEntry.isDirectory() || jarEntry.getName().contains("META-INF")) {
-                                continue;
-                            }
+                } else if (
+                        downloads_obj.has("rules")
+                                &&
+                                downloads_obj.getAsJsonArray("rules").get(0).getAsJsonObject().has("os")
+                ) {
+                    String os_name = downloads_obj.getAsJsonArray("rules")
+                            .get(0).getAsJsonObject()
+                            .getAsJsonObject("os")
+                            .get("name").getAsString();
+                    JsonObject artifact = downloads_obj.getAsJsonObject("artifact");
+                    if (System.getProperty("os.name").contains(os_name)) {
+                        relativePath = artifact.get("path").getAsString();
+                        url = artifact.get("url").getAsString();
+                        String absolutePath = libDirPath + "/" + relativePath;
+                        System.out.println("[INFO]Vanilla Downloader: Downloading native:" + libraries.get(i).getAsJsonObject().get("name").getAsString());
+                        try {
+                            FileUtils.writeByteArrayToFile(new File(absolutePath), IOUtils.toByteArray(new URL(url)));
+                            var nativeDir = System.getProperty("oml.gameDir")
+                                    + File.separator
+                                    + "versions"
+                                    + File.separator
+                                    + verName
+                                    + File.separator
+                                    + "natives"
+                                    + File.separator;
+                            var jarFile = new JarFile(absolutePath);
+                            var entries = jarFile.entries();
+                            while (entries.hasMoreElements()) {
+                                var jarEntry = entries.nextElement();
+                                if (jarEntry.isDirectory() || jarEntry.getName().contains("META-INF")) {
+                                    continue;
+                                }
 
-                            var inputStream = jarFile.getInputStream(jarEntry);
-                            FileUtils.writeByteArrayToFile(new File(nativeDir + File.separator + jarEntry.getName()), IOUtils.toByteArray(inputStream));
-                            inputStream.close();
+                                var inputStream = jarFile.getInputStream(jarEntry);
+                                FileUtils.writeByteArrayToFile(new File(nativeDir + File.separator + jarEntry.getName()), IOUtils.toByteArray(inputStream));
+                                inputStream.close();
+                            }
+                            jarFile.close();
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
                         }
-                        jarFile.close();
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
                     }
                 }
             }
@@ -461,7 +577,14 @@ public class VanillaDownloader {
                     System.out.println("[INFO]Vanilla Downloader: Downloading native:" + libraries.get(i).getAsJsonObject().get("name").getAsString());
                     try {
                         FileUtils.writeByteArrayToFile(new File(absolutePath), IOUtils.toByteArray(new URL(url)));
-                        var nativeDir = libDirPath.replace("/libraries", "/natives/");
+                        var nativeDir = System.getProperty("oml.gameDir")
+                                    + File.separator
+                                    + "versions"
+                                    + File.separator
+                                    + verName
+                                    + File.separator
+                                    + "natives"
+                                    + File.separator;
                         var jarFile = new JarFile(absolutePath);
                         var entries = jarFile.entries();
                         while (entries.hasMoreElements()) {
@@ -477,6 +600,48 @@ public class VanillaDownloader {
                         jarFile.close();
                     } catch (IOException e) {
                         throw new RuntimeException(e);
+                    }
+                } else if (
+                        downloads_obj.has("rules")
+                                &&
+                                downloads_obj.getAsJsonArray("rules").get(0).getAsJsonObject().has("os")
+                ) {
+                    String os_name = downloads_obj.getAsJsonArray("rules")
+                            .get(0).getAsJsonObject()
+                            .getAsJsonObject("os")
+                            .get("name").getAsString();
+                    JsonObject artifact = downloads_obj.getAsJsonObject("artifact");
+                    if (System.getProperty("os.name").contains(os_name)) {
+                        String relativePath = artifact.get("path").getAsString();
+                        String url = artifact.get("url").getAsString();
+                        String absolutePath = libDirPath + "/" + relativePath;
+                        System.out.println("[INFO]Vanilla Downloader: Downloading native:" + libraries.get(i).getAsJsonObject().get("name").getAsString());
+                        try {
+                            FileUtils.writeByteArrayToFile(new File(absolutePath), IOUtils.toByteArray(new URL(url)));
+                            var nativeDir = System.getProperty("oml.gameDir")
+                                    + File.separator
+                                    + "versions"
+                                    + File.separator
+                                    + verName
+                                    + File.separator
+                                    + "natives"
+                                    + File.separator;
+                            var jarFile = new JarFile(absolutePath);
+                            var entries = jarFile.entries();
+                            while (entries.hasMoreElements()) {
+                                var jarEntry = entries.nextElement();
+                                if (jarEntry.isDirectory() || jarEntry.getName().contains("META-INF")) {
+                                    continue;
+                                }
+
+                                var inputStream = jarFile.getInputStream(jarEntry);
+                                FileUtils.writeByteArrayToFile(new File(nativeDir + File.separator + jarEntry.getName()), IOUtils.toByteArray(inputStream));
+                                inputStream.close();
+                            }
+                            jarFile.close();
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
                     }
                 }
             }

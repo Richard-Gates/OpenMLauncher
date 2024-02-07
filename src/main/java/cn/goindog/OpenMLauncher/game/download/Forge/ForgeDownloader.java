@@ -257,7 +257,7 @@ public class ForgeDownloader {
                     }
                 }
                 if (library.getAsJsonObject().has("classifiers")) {
-                    String libDirPath = getInstaller().getPath().replace("forge-installer.jar", "libraries/");
+                    String libDirPath = System.getProperty("oml.gameDir") + File.separator + "libraries" + File.separator;
                     String relativePath = "";
                     String nativeUrl = "";
                     if (System.getProperty("os.name").contains("Windows") && library.getAsJsonObject().getAsJsonObject("classifiers").has("natives-windows")) {
@@ -293,7 +293,6 @@ public class ForgeDownloader {
                 }
             }
         }
-
 
 
         private void deleteTemp(String versionName) throws IOException {
@@ -422,9 +421,11 @@ public class ForgeDownloader {
                 if (!path.contains("net/minecraftforge/forge/")) {
                     FileUtils.writeByteArrayToFile(
                             new File(
-                                    getInstaller().getPath().replace(
-                                            "forge-installer.jar",
-                                            "libraries/" + path)
+                                    System.getProperty("oml.gameDir")
+                                            + File.separator
+                                            + "libraries"
+                                            + File.separator
+                                            + path
                             ),
                             IOUtils.toByteArray(
                                     new URL(url)
@@ -443,7 +444,11 @@ public class ForgeDownloader {
                                         getInstaller().getPath().replace("forge-installer.jar", "temp/maven/" + path)
                                 ),
                                 new File(
-                                        getInstaller().getPath().replace("forge-installer.jar", "libraries/" + path)
+                                        System.getProperty("oml.gameDir")
+                                                + File.separator
+                                                + "libraries"
+                                                + File.separator
+                                                + path
                                 )
                         );
                         FileUtils.copyFile(
@@ -494,7 +499,7 @@ public class ForgeDownloader {
                     }
                 }
                 if (library.getAsJsonObject().has("classifiers")) {
-                    String libDirPath = getInstaller().getPath().replace("forge-installer.jar", "libraries/");
+                    String libDirPath = System.getProperty("oml.gameDir") + File.separator + "libraries" + File.separator;
                     String relativePath = "";
                     String nativeUrl = "";
                     if (System.getProperty("os.name").contains("Windows") && library.getAsJsonObject().getAsJsonObject("classifiers").has("natives-windows")) {
@@ -555,30 +560,30 @@ public class ForgeDownloader {
             );
         }
 
-    private JsonObject versionJsonMerge(JsonObject firstObj, JsonObject secondObj) {
-        for (String key : secondObj.keySet()) {
-            if (!firstObj.has(key)) {
-                firstObj.add(key, secondObj.get(key));
+        private JsonObject versionJsonMerge(JsonObject firstObj, JsonObject secondObj) {
+            for (String key : secondObj.keySet()) {
+                if (!firstObj.has(key)) {
+                    firstObj.add(key, secondObj.get(key));
+                }
             }
-        }
-        for (JsonElement element : secondObj.getAsJsonArray("libraries")) {
-            firstObj.getAsJsonArray("libraries").add(element);
-        }
-        for (JsonElement element : secondObj.getAsJsonObject("arguments").getAsJsonArray("game")) {
-            firstObj.getAsJsonObject("arguments").getAsJsonArray("game").add(element);
-        }
-        for (JsonElement element : secondObj.getAsJsonObject("arguments").getAsJsonArray("jvm")) {
-            firstObj.getAsJsonObject("arguments").getAsJsonArray("jvm").add(element);
-        }
-        return firstObj;
-    }
-
-    public void build() throws NullInstallerException, IOException {
-        if (this.installer == null) {
-            throw new NullInstallerException("The installer is not valid.Please check forge-installer path.");
+            for (JsonElement element : secondObj.getAsJsonArray("libraries")) {
+                firstObj.getAsJsonArray("libraries").add(element);
+            }
+            for (JsonElement element : secondObj.getAsJsonObject("arguments").getAsJsonArray("game")) {
+                firstObj.getAsJsonObject("arguments").getAsJsonArray("game").add(element);
+            }
+            for (JsonElement element : secondObj.getAsJsonObject("arguments").getAsJsonArray("jvm")) {
+                firstObj.getAsJsonObject("arguments").getAsJsonArray("jvm").add(element);
+            }
+            return firstObj;
         }
 
-        this.buildTemp();
+        public void build() throws NullInstallerException, IOException {
+            if (this.installer == null) {
+                throw new NullInstallerException("The installer is not valid.Please check forge-installer path.");
+            }
+
+            this.buildTemp();
+        }
     }
-}
 }
