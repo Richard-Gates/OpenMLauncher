@@ -12,10 +12,10 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
-public class VanillaLauncher {
+public class GameLauncher {
     private String gamePath;
 
-    public VanillaLauncher setGamePath(String gamePath) {
+    public GameLauncher setGamePath(String gamePath) {
         this.gamePath = gamePath;
         return this;
     }
@@ -37,7 +37,7 @@ public class VanillaLauncher {
         String mcToken = userConfig.get("minecraft_token").getAsString();
         String uuid = profile.get("id").getAsString();
         String gameDir = System.getProperty("oml.gameDir") + File.separator + "versions" + File.separator + gameName;
-        String assetsDir = gameDir + File.separator + "assets";
+        String assetsDir = System.getProperty("oml.gameDir") + File.separator + "assets";
         String assetIndex = versionJson.getAsJsonObject("assetIndex").get("id").getAsString();
         String mainClass = versionJson.get("mainClass").getAsString();
         JsonArray libraries = versionJson.getAsJsonArray("libraries");
@@ -84,7 +84,7 @@ public class VanillaLauncher {
             String errStr = consumeInputStream(process.getErrorStream());
             int proc = process.waitFor();
             if (proc == 0) {
-                System.out.println("执行成功");
+                System.out.println("[INFO]Game is Exited");
             } else {
                 System.out.println("执行失败" + errStr);
             }
@@ -109,19 +109,81 @@ public class VanillaLauncher {
         } else {
             separator = ":";
         }
+        libs.append(gameDir).append(File.separator).append(gameVersion).append(".jar").append(separator);
         for (JsonElement element : libraries) {
-            if (element.getAsJsonObject().get("downloads").getAsJsonObject().has("artifact")) {
-                String path = element.getAsJsonObject().getAsJsonObject("downloads").getAsJsonObject("artifact").get("path").getAsString();
-                if (System.getProperty("os.name").contains(element.getAsJsonObject().get("name").getAsString())) {
-                    if (element.getAsJsonObject().getAsJsonArray("rules").get(0).getAsJsonObject().has("os") && System.getProperty("os.name").contains(element.getAsJsonObject().getAsJsonArray("rules").get(0).getAsJsonObject().getAsJsonObject("os").get("name").getAsString()))
-                    {
-                        libs.append(assetDir.replace("assets", "libraries/" + path)).append(separator);
+            if (element.getAsJsonObject().has("downloads")) {
+                if (element.getAsJsonObject().get("downloads").getAsJsonObject().has("artifact")) {
+                    if (element.getAsJsonObject().has("rules")) {
+                        JsonArray rules = element.getAsJsonObject().getAsJsonArray("rules");
+                        for (int i = 0; i < rules.size(); i++) {
+                            JsonObject rule = rules.get(i).getAsJsonObject();
+                            if (rule.has("action")) {
+                                String action = rule.get("action").getAsString();
+                                if (rule.has("os")) {
+                                    String osName = rule.getAsJsonObject("os").get("name").getAsString();
+                                    switch (action) {
+                                        case "allow": {
+                                            if (System.getProperty("os.name").toLowerCase().contains(osName)) {
+                                                String path = element.getAsJsonObject().getAsJsonObject("downloads").getAsJsonObject("artifact").get("path").getAsString();
+                                                String libDir = System.getProperty("oml.gameDir")
+                                                        + File.separator
+                                                        + "libraries"
+                                                        + File.separator;
+                                                libs.append(libDir).append(File.separator).append(path).append(separator);
+                                            }
+                                            break;
+                                        }
+                                        case "disallow": {
+                                            if (!System.getProperty("os.name").toLowerCase().contains(osName)) {
+                                                String path = element.getAsJsonObject().getAsJsonObject("downloads").getAsJsonObject("artifact").get("path").getAsString();
+                                                String libDir = System.getProperty("oml.gameDir")
+                                                        + File.separator
+                                                        + "libraries"
+                                                        + File.separator;
+                                                libs.append(libDir).append(File.separator).append(path).append(separator);
+                                            }
+                                            break;
+                                        }
+                                    }
+                                    break;
+                                } else {
+                                    if (action.contains("allow") && !System.getProperty("os.name").contains("Mac OS")) {
+                                        String path = element.getAsJsonObject().getAsJsonObject("downloads").getAsJsonObject("artifact").get("path").getAsString();
+                                        String libDir = System.getProperty("oml.gameDir")
+                                                + File.separator
+                                                + "libraries"
+                                                + File.separator;
+                                        libs.append(libDir).append(File.separator).append(path).append(separator);
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        String path = element.getAsJsonObject().getAsJsonObject("downloads").getAsJsonObject("artifact").get("path").getAsString();
+                        String libDir = System.getProperty("oml.gameDir")
+                                + File.separator
+                                + "libraries"
+                                + File.separator;
+                        libs.append(libDir).append(File.separator).append(path).append(separator);
                     }
-                } else {
-                    libs.append(assetDir.replace("assets", "libraries/" + path)).append(separator);
                 }
+            } else {
+                String name = element.getAsJsonObject().get("name").getAsString();
+                String libDir = System.getProperty("oml.gameDir")
+                        + File.separator
+                        + "libraries"
+                        + File.separator;
+                String[] path = name.split(":");
+                String relativePath = path[0].replace(".", "/")
+                        + File.separator
+                        + path[1]
+                        + File.separator
+                        + path[2]
+                        + File.separator
+                        + path[1] + "-" + path[2] + ".jar";
+                libs.append(libDir).append(relativePath).append(separator);
             }
-        } libs.append(";").append(gameDir).append(File.separator).append(gameVersion).append(".jar");
+        }
 
         StringBuilder JVMBuilder = new StringBuilder();
         if (arguments.has("jvm")) {
@@ -133,10 +195,18 @@ public class VanillaLauncher {
                             String os = rule.getAsJsonObject("os").get("name").getAsString();
                             if (System.getProperty("os.name").toLowerCase().contains(os)) {
                                 if (!element.getAsJsonObject().get("value").isJsonArray()) {
-                                    JVMBuilder.append(" \"").append(element.getAsJsonObject().get("value").getAsString()).append("\"");
+                                    if (!element.getAsJsonObject().get("value").getAsString().contains(" ")) {
+                                        JVMBuilder.append(" ").append(element.getAsJsonObject().get("value").getAsString()).append(" ");
+                                    } else {
+                                        JVMBuilder.append(" \"").append(element.getAsJsonObject().get("value").getAsString()).append("\"");
+                                    }
                                 } else {
                                     for (JsonElement e : element.getAsJsonObject().get("value").getAsJsonArray()) {
-                                        JVMBuilder.append(" \"").append(e.getAsString()).append("\"");
+                                        if (!element.getAsJsonObject().get("value").getAsString().contains(" ")) {
+                                            JVMBuilder.append(" ").append(e.getAsString()).append(" ");
+                                        } else {
+                                            JVMBuilder.append(" \"").append(e.getAsString()).append("\"");
+                                        }
                                     }
                                 }
                             }
@@ -160,7 +230,11 @@ public class VanillaLauncher {
                     } else if (element.getAsString().contains("-cp")) {
                         JVMBuilder.append(" ");
                     } else {
-                        JVMBuilder.append(" ").append(element.getAsString());
+                        if (!element.getAsString().contains(" ")) {
+                            JVMBuilder.append(" ").append(element.getAsString());
+                        } else {
+                            JVMBuilder.append(" \"").append(element.getAsString()).append("\"");
+                        }
                     }
                 }
             }

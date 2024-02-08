@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="Encoding">
+    <file url="file://$PROJECT_DIR$/hs_err_pid3268.log" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/hs_err_pid3368.log" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/src/main/resources" charset="UTF-8" />
+    <file url="file://D:/Users/jczy/Documents/启动 fabric-loader-0.15.6-1.16.5.bat" charset="GBK" />
+    <file url="PROJECT" charset="GBK" />
   </component>
 </project>

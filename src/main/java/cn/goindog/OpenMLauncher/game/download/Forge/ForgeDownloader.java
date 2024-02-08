@@ -406,7 +406,41 @@ public class ForgeDownloader {
                     JsonObject.class
             );
             JsonArray libraries = versionJson.getAsJsonArray("libraries");
-            String versionName = "";
+            String versionName = versionJson.get("id").getAsString();
+            JsonObject vanillaJson = new Gson().fromJson(
+                    FileUtils.readFileToString(
+                            new File(
+                                    getInstaller().getPath().replace("forge-installer.jar", versionJson.get("inheritsFrom").getAsString() + ".json")
+                            ),
+                            StandardCharsets.UTF_8
+                    ),
+                    JsonObject.class
+            );
+            JsonObject forgeJson = new Gson().fromJson(
+                    FileUtils.readFileToString(
+                            new File(
+                                    getInstaller().getPath().replace("forge-installer.jar", "temp/version.json")
+                            ),
+                            StandardCharsets.UTF_8
+                    ),
+                    JsonObject.class
+            );
+            JsonObject mergeJson = versionJsonMerge(forgeJson, vanillaJson);
+            mergeJson.add(
+                    "clientVersion",
+                    mergeJson.get("inheritsFrom")
+            );
+            mergeJson.remove("inheritsFrom");
+            FileUtils.writeStringToFile(
+                    new File(
+                            getInstaller().getPath().replace("forge-installer.jar", versionName + ".json")
+                    ),
+                    mergeJson.toString(),
+                    StandardCharsets.UTF_8
+            );
+            FileUtils.delete(
+                    new File(getInstaller().getPath().replace("forge-installer.jar", mergeJson.get("clientVersion").getAsString()) + ".json")
+            );
             for (JsonElement library : libraries) {
                 String path = library.getAsJsonObject()
                         .get("downloads").getAsJsonObject()
@@ -463,38 +497,6 @@ public class ForgeDownloader {
                                 new File(
                                         getInstaller().getPath().replace("forge-installer.jar", packagePath[2].split("-")[0] + ".jar")
                                 )
-                        );
-                        JsonObject vanillaJson = new Gson().fromJson(
-                                FileUtils.readFileToString(
-                                        new File(
-                                                getInstaller().getPath().replace("forge-installer.jar", packagePath[2].replace("-", "-forge-") + ".json")
-                                        ),
-                                        StandardCharsets.UTF_8
-                                ),
-                                JsonObject.class
-                        );
-                        JsonObject forgeJson = new Gson().fromJson(
-                                FileUtils.readFileToString(
-                                        new File(
-                                                getInstaller().getPath().replace("forge-installer.jar", "temp/version.json")
-                                        ),
-                                        StandardCharsets.UTF_8
-                                ),
-                                JsonObject.class
-                        );
-                        JsonObject mergeJson = versionJsonMerge(forgeJson, vanillaJson);
-                        mergeJson.add(
-                                "clientVersion",
-                                mergeJson.get("inheritsFrom")
-                        );
-                        FileUtils.writeByteArrayToFile(
-                                new File(
-                                        getInstaller().getPath().replace("forge-installer.jar", packagePath[2].replace("-", "-forge-") + ".json")
-                                ),
-                                mergeJson.toString().getBytes()
-                        );
-                        FileUtils.delete(
-                                new File(getInstaller().getPath().replace("forge-installer.jar", packagePath[2].split("-")[0]) + ".json")
                         );
                     }
                 }
@@ -572,8 +574,10 @@ public class ForgeDownloader {
             for (JsonElement element : secondObj.getAsJsonObject("arguments").getAsJsonArray("game")) {
                 firstObj.getAsJsonObject("arguments").getAsJsonArray("game").add(element);
             }
-            for (JsonElement element : secondObj.getAsJsonObject("arguments").getAsJsonArray("jvm")) {
-                firstObj.getAsJsonObject("arguments").getAsJsonArray("jvm").add(element);
+            if ( secondObj.getAsJsonObject("arguments").has("jvm")) {
+                for (JsonElement element : secondObj.getAsJsonObject("arguments").getAsJsonArray("jvm")) {
+                    firstObj.getAsJsonObject("arguments").getAsJsonArray("jvm").add(element);
+                }
             }
             return firstObj;
         }
