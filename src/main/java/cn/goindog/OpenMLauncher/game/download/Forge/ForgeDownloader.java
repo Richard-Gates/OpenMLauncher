@@ -582,6 +582,31 @@ public class ForgeDownloader {
             return firstObj;
         }
 
+        private void moveFile(JsonObject versionJson) {
+            String versionName = versionJson.get("id").getAsString();
+            String versionPath = System.getProperty("oml.gameDir")
+                    + "/versions/"
+                    + versionName;
+            String libPath = System.getProperty("oml.gameDir")
+                    + "/libraries/";
+            JsonArray gameLaunchArguments = versionJson.getAsJsonObject("arguments").getAsJsonArray("game");
+            String mcpVersion = "";
+            for (int i = 0; i < gameLaunchArguments.size(); i++) {
+                JsonElement argument = gameLaunchArguments.get(i);
+                if (!argument.isJsonObject()) {
+                    if (argument.getAsString().contains("--fml.mcpVersion")) {
+                        mcpVersion = gameLaunchArguments.get(i + 1).getAsString();
+                        break;
+                    }
+                }
+            }
+            String vanillaJarPath = versionPath
+                    + File.separator
+                    + versionName
+                    + ".jar";
+
+        }
+
         public void build() throws NullInstallerException, IOException {
             if (this.installer == null) {
                 throw new NullInstallerException("The installer is not valid.Please check forge-installer path.");

@@ -12,10 +12,10 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
-public class GameLauncher {
+public class JavaMCLauncher {
     private String gamePath;
 
-    public GameLauncher setGamePath(String gamePath) {
+    public JavaMCLauncher setGamePath(String gamePath) {
         this.gamePath = gamePath;
         return this;
     }
@@ -36,7 +36,7 @@ public class GameLauncher {
         String userName = profile.get("name").getAsString();
         String mcToken = userConfig.get("minecraft_token").getAsString();
         String uuid = profile.get("id").getAsString();
-        String gameDir = System.getProperty("oml.gameDir") + File.separator + "versions" + File.separator + gameName;
+        String gameDir = System.getProperty("oml.gameDir") + "/versions/" + gameName;
         String assetsDir = System.getProperty("oml.gameDir") + File.separator + "assets";
         String assetIndex = versionJson.getAsJsonObject("assetIndex").get("id").getAsString();
         String mainClass = versionJson.get("mainClass").getAsString();
@@ -62,8 +62,10 @@ public class GameLauncher {
             JsonArray game_argument = new Gson().fromJson(String.valueOf(arguments), JsonArray.class);
             argument.add("game", game_argument);
         }
+        String libDir = System.getProperty("oml.gameDir")
+                + "/libraries/";
 
-        String launchCommand = getLaunchCommand(uuid, mcToken, userName, type, assetIndex, assetsDir, gameDir, gameName, mainClass, libraries, argument);
+        String launchCommand = getLaunchCommand(uuid, mcToken, userName, type, assetIndex, assetsDir, gameDir, gameName, mainClass, libraries, argument, libDir);
 
         String assetsIndexUrl = versionJson.get("assetIndex").getAsJsonObject().get("url").getAsString();
         System.out.println("[INFO]GameStarter Thread: Starting Game: (launchCommand)" + launchCommand);
@@ -101,7 +103,7 @@ public class GameLauncher {
         return userConfigObj.getAsJsonArray("users").get(selectorIndex).getAsJsonObject();
     }
 
-    private String getLaunchCommand(String uuid, String token, String userName, String userType, String assetIndex, String assetDir, String gameDir, String gameVersion, String mainClass, JsonArray libraries, JsonObject arguments) {
+    private String getLaunchCommand(String uuid, String token, String userName, String userType, String assetIndex, String assetDir, String gameDir, String gameVersion, String mainClass, JsonArray libraries, JsonObject arguments,String librariesDir) {
         StringBuilder libs = new StringBuilder();
         String separator;
         if (System.getProperty("os.name").contains("Windows")) {
@@ -222,9 +224,9 @@ public class GameLauncher {
                     } else if (element.getAsString().contains("${version_name}")) {
                         JVMBuilder.append(" \"").append(element.getAsString().replace("${version_name}", gameVersion)).append("\"");
                     } else if (element.getAsString().contains("${classpath_separator}") && element.getAsString().contains("${library_directory}")) {
-                        JVMBuilder.append(" \"").append(element.getAsString().replace("${library_directory}", gameDir + "/libraries/").replace("${classpath_separator}", separator)).append("\"");
+                        JVMBuilder.append(" \"").append(element.getAsString().replace("${library_directory}", librariesDir).replace("${classpath_separator}", separator)).append("\"");
                     } else if (element.getAsString().contains("${library_directory}")) {
-                        JVMBuilder.append(" \"").append(element.getAsString().replace("${library_directory}", gameDir + "/libraries/")).append("\"");
+                        JVMBuilder.append(" \"").append(element.getAsString().replace("${library_directory}", librariesDir)).append("\"");
                     } else if (element.getAsString().contains("${classpath}")) {
                         JVMBuilder.append(" ");
                     } else if (element.getAsString().contains("-cp")) {
