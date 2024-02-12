@@ -1,8 +1,5 @@
 package cn.goindog.OpenMLauncher.game.launch;
 
-import com.sun.jna.platform.win32.Advapi32Util;
-import com.sun.jna.platform.win32.WinReg;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
