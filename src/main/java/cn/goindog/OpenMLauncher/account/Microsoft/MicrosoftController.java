@@ -12,6 +12,7 @@ import org.apache.commons.io.FileUtils;
 import java.io.File;
 import java.io.IOException;
 import java.net.HttpURLConnection;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 public class MicrosoftController {
@@ -20,6 +21,7 @@ public class MicrosoftController {
     private static final String Minecraft_Authenticate_Url = "https://api.minecraftservices.com/authentication/login_with_xbox";
     private static final String Check_Url = "https://api.minecraftservices.com/entitlements/mcstore";
     private static final String get_profile_url = "https://api.minecraftservices.com/minecraft/profile";
+    private static final String refresh_token_url = "https://login.live.com/oauth20_token.srf";
     private static String refresh_token = "";
     private Collection listeners;
 
@@ -50,6 +52,53 @@ public class MicrosoftController {
         }
     }
 
+    public void refreshToken() {
+        try {
+            JsonObject userConfig = new Gson().fromJson(
+                    FileUtils.readFileToString(
+                            new File(
+                                    System.getProperty("user.dir")
+                                            + File.separator
+                                            + ".openmlauncher"
+                                            + File.separator
+                                            + "user.json"
+                            ),
+                            StandardCharsets.UTF_8
+                    ),
+                    JsonObject.class
+            );
+            int index = userConfig.get("selector").getAsInt();
+            JsonObject user = (JsonObject) userConfig.getAsJsonArray("users").get(index);
+            refresh_token = user.get("microsoft_refresh_token").getAsString();
+
+            HttpClient client = new HttpClient();
+            PostMethod method = new PostMethod(refresh_token_url);
+
+            method.addRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+
+            method.addParameter("client_id", "8073fcb7-1de0-4440-b6d3-62f8407bd5dc");
+            method.addParameter("grant_type", "refresh_token");
+            method.addParameter("scope", "XboxLive.signin offline_access");
+            method.addParameter("refresh_token", refresh_token);
+
+            int code = client.executeMethod(method);
+
+            String response = method.getResponseBodyAsString();
+            if (code == HttpURLConnection.HTTP_OK) {
+                JsonObject response_obj = new Gson().fromJson(
+                        response,
+                        JsonObject.class
+                );
+                String access_token = response_obj.get("access_token").getAsString();
+                refresh_token = response_obj.get("refresh_token").getAsString();
+                XblAuthenticate(access_token);
+            } else {
+                System.out.println("[INFO]Refresh Token: Bad Connection (" + code + ")" + " - " + response);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     public void build(MicrosoftOAuthOptions options) {
         switch (options.getType()) {

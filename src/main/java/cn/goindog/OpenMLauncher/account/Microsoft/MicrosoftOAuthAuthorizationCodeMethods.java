@@ -29,7 +29,7 @@ public class MicrosoftOAuthAuthorizationCodeMethods {
         }
     }
 
-    private static final String live_service_url = "https://login.live.com/oauth20_authorize.srf?client_id=8073fcb7-1de0-4440-b6d3-62f8407bd5dc&scope=XboxLive.signin&response_type=code";
+    private static final String live_service_url = "https://login.live.com/oauth20_authorize.srf?client_id=8073fcb7-1de0-4440-b6d3-62f8407bd5dc&scope=XboxLive.signin%20offline_access&response_type=code";
     private static final String code_to_token_url = "https://login.live.com/oauth20_token.srf";
 
     private final JsonObject object = new JsonObject();
@@ -105,7 +105,7 @@ public class MicrosoftOAuthAuthorizationCodeMethods {
 
         method.addParameter("client_id", "8073fcb7-1de0-4440-b6d3-62f8407bd5dc");
         method.addParameter("code", code);
-        method.addParameter("scope", "XboxLive.signin");
+        method.addParameter("scope", "XboxLive.signin offline_access");
         method.addParameter("grant_type", "authorization_code");
 
         int resp_code = client.executeMethod(method);

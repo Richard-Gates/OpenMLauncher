@@ -1,5 +1,6 @@
 package cn.goindog.OpenMLauncher.game.launch;
 
+import cn.goindog.OpenMLauncher.account.Microsoft.MicrosoftController;
 import cn.goindog.OpenMLauncher.game.download.Vanilla.VanillaDownloader;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -15,16 +16,12 @@ import java.util.Arrays;
 public class JavaMCLauncher {
     private String gamePath;
 
-    public JavaMCLauncher setGamePath(String gamePath) {
-        this.gamePath = gamePath;
-        return this;
-    }
-
     public String getGamePath() {
         return gamePath;
     }
 
     public void build(String gameName) throws IOException, InterruptedException {
+        gamePath = System.getProperty("oml.gameDir") + "/versions/" + gameName;
         JsonObject versionJson = new Gson().fromJson(FileUtils.readFileToString(new File(gamePath + File.separator + gameName + ".json"), StandardCharsets.UTF_8), JsonObject.class);
         launch(versionJson, gameName);
     }
@@ -62,38 +59,43 @@ public class JavaMCLauncher {
             JsonArray game_argument = new Gson().fromJson(String.valueOf(arguments), JsonArray.class);
             argument.add("game", game_argument);
         }
-        String libDir = System.getProperty("oml.gameDir")
-                + "/libraries/";
 
-        String launchCommand = getLaunchCommand(uuid, mcToken, userName, type, assetIndex, assetsDir, gameDir, gameName, mainClass, libraries, argument, libDir);
+        MicrosoftController controller = new MicrosoftController();
+        controller.addOAuthFinishListener(event -> {
+            String libDir = System.getProperty("oml.gameDir")
+                    + "/libraries/";
 
-        String assetsIndexUrl = versionJson.get("assetIndex").getAsJsonObject().get("url").getAsString();
-        System.out.println("[INFO]GameStarter Thread: Starting Game: (launchCommand)" + launchCommand);
+            String launchCommand = getLaunchCommand(uuid, mcToken, userName, type, assetIndex, assetsDir, gameDir, gameName, mainClass, libraries, argument, libDir);
 
-        Thread thread = new Thread(() -> {
-            VanillaDownloader downloader = new VanillaDownloader();
+            String assetsIndexUrl = versionJson.get("assetIndex").getAsJsonObject().get("url").getAsString();
+            System.out.println("[INFO]GameStarter Thread: Starting Game: (launchCommand)" + launchCommand);
+
+            Thread thread = new Thread(() -> {
+                VanillaDownloader downloader = new VanillaDownloader();
+                try {
+                    downloader.reDownloadFiles(new URL(assetsIndexUrl), assetsDir, assetIndex, libraries);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+
+
             try {
-                downloader.reDownloadFiles(new URL(assetsIndexUrl), assetsDir, assetIndex, libraries);
-            } catch (IOException e) {
+                Process process = Runtime.getRuntime().exec(launchCommand);
+                String inStr = consumeInputStream(process.getInputStream());
+                String errStr = consumeInputStream(process.getErrorStream());
+                int proc = process.waitFor();
+                if (proc == 0) {
+                    System.out.println("[INFO]Game is Exited");
+                } else {
+                    System.out.println("执行失败" + errStr);
+                }
+            } catch (IOException | InterruptedException e) {
                 throw new RuntimeException(e);
             }
         });
 
-
-        try {
-            Process process = Runtime.getRuntime().exec(launchCommand);
-            String inStr = consumeInputStream(process.getInputStream());
-            String errStr = consumeInputStream(process.getErrorStream());
-            int proc = process.waitFor();
-            if (proc == 0) {
-                System.out.println("[INFO]Game is Exited");
-            } else {
-                System.out.println("执行失败" + errStr);
-            }
-        } catch (IOException | InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-
+        controller.refreshToken();
     }
 
     private JsonObject getUserConfig() throws IOException {
@@ -274,6 +276,9 @@ public class JavaMCLauncher {
                 }
             }
         }
+
+        JVMBuilder.append(" ").append("-Duser.dir=\"").append(gameDir).append("\" ");
+
         return "java " + JVMBuilder + " " + mainClass + " " + gameArguments;
     }
 
