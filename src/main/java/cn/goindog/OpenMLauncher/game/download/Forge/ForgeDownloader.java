@@ -1,6 +1,6 @@
 package cn.goindog.OpenMLauncher.game.download.Forge;
 
-import cn.goindog.OpenMLauncher.exceptions.ForgeExceptions.NullInstallerException;
+import cn.goindog.OpenMLauncher.exceptions.GameExceptions.ForgeExceptions.NullInstallerException;
 import cn.goindog.OpenMLauncher.game.download.Vanilla.VanillaDownloader;
 import cn.goindog.OpenMLauncher.game.download.Vanilla.VanillaInstallProfile;
 import com.google.gson.Gson;
@@ -11,10 +11,8 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 
 import java.io.*;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;

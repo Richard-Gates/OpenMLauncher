@@ -1,4 +1,4 @@
-package cn.goindog.OpenMLauncher.exceptions.ForgeExceptions;
+package cn.goindog.OpenMLauncher.exceptions.GameExceptions.ForgeExceptions;
 
 import cn.goindog.OpenMLauncher.exceptions.CommonException;
 

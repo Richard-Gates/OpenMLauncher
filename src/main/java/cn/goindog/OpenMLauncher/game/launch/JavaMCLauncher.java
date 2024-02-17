@@ -26,7 +26,7 @@ public class JavaMCLauncher {
         launch(versionJson, gameName);
     }
 
-    private void launch(JsonObject versionJson, String gameName) throws IOException, InterruptedException {
+    private void launch(JsonObject versionJson, String gameName) throws IOException {
         JsonObject userConfig = this.getUserConfig();
         String type = userConfig.get("type").getAsString();
         JsonObject profile = userConfig.getAsJsonObject("profile");
@@ -61,36 +61,35 @@ public class JavaMCLauncher {
         }
 
         MicrosoftController controller = new MicrosoftController();
-        controller.addOAuthFinishListener(event -> {
+        controller.addOAuthFinishListener((ev) -> {
             String libDir = System.getProperty("oml.gameDir")
                     + "/libraries/";
 
             String launchCommand = getLaunchCommand(uuid, mcToken, userName, type, assetIndex, assetsDir, gameDir, gameName, mainClass, libraries, argument, libDir);
 
             String assetsIndexUrl = versionJson.get("assetIndex").getAsJsonObject().get("url").getAsString();
-            System.out.println("[INFO]GameStarter Thread: Starting Game: (launchCommand)" + launchCommand);
-
-            Thread thread = new Thread(() -> {
-                VanillaDownloader downloader = new VanillaDownloader();
-                try {
-                    downloader.reDownloadFiles(new URL(assetsIndexUrl), assetsDir, assetIndex, libraries);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            });
 
 
+            VanillaDownloader downloader = new VanillaDownloader();
             try {
-                Process process = Runtime.getRuntime().exec(launchCommand);
-                String inStr = consumeInputStream(process.getInputStream());
-                String errStr = consumeInputStream(process.getErrorStream());
-                int proc = process.waitFor();
-                if (proc == 0) {
-                    System.out.println("[INFO]Game is Exited");
-                } else {
-                    System.out.println("执行失败" + errStr);
-                }
-            } catch (IOException | InterruptedException e) {
+                downloader.addDownloadFinishListener(event -> {
+                    try {
+                        System.out.println("[INFO]GameStarter Thread: Starting Game: (launchCommand)" + launchCommand);
+                        Process process = Runtime.getRuntime().exec(launchCommand);
+                        String inStr = consumeInputStream(process.getInputStream());
+                        String errStr = consumeInputStream(process.getErrorStream());
+                        int proc = process.waitFor();
+                        if (proc == 0) {
+                            System.out.println("[INFO]Game is Exited");
+                        } else {
+                            System.out.println("执行失败" + errStr);
+                        }
+                    } catch (IOException | InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+                downloader.reDownloadFiles(new URL(assetsIndexUrl), assetsDir, assetIndex, libraries);
+            } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         });
@@ -168,7 +167,11 @@ public class JavaMCLauncher {
                                 + File.separator
                                 + "libraries"
                                 + File.separator;
-                        libs.append(libDir).append(File.separator).append(path).append(separator);
+                        StringBuilder pathBuilder = new StringBuilder();
+                        pathBuilder.append(libDir).append(File.separator).append(path);
+                        if (!libs.toString().contains(pathBuilder)) {
+                            libs.append(pathBuilder).append(separator);
+                        }
                     }
                 }
             } else {
@@ -268,6 +271,8 @@ public class JavaMCLauncher {
                         gameArguments.append(gameDir);
                     } else if (element.getAsString().contains("version_name")) {
                         gameArguments.append(gameVersion);
+                    } else if (element.getAsString().contains("clientid")) {
+                        gameArguments.append("8073fcb7-1de0-4440-b6d3-62f8407bd5dc");
                     } else {
                         gameArguments.append(" ").append(element.getAsString()).append(" ");
                     }
@@ -282,7 +287,7 @@ public class JavaMCLauncher {
         return "java " + JVMBuilder + " " + mainClass + " " + gameArguments;
     }
 
-    public static String consumeInputStream(InputStream is) throws IOException {
+    private static String consumeInputStream(InputStream is) throws IOException {
         BufferedReader br = new BufferedReader(new InputStreamReader(is, "GBK"));
         String s;
         StringBuilder sb = new StringBuilder();
