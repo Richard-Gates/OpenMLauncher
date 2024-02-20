@@ -25,6 +25,10 @@ public class MicrosoftOAuthDeviceFlowMethods {
     private final JsonObject object = new JsonObject();
     private Collection listeners;
 
+    /**
+     * 添加OAuth完成事件监听器
+     * @param listener 监听器实例
+     */
     public void addOAuthFinishListener(OAuthFinishEventListener listener) {
         if (listeners == null) {
             listeners = new HashSet();
@@ -32,6 +36,10 @@ public class MicrosoftOAuthDeviceFlowMethods {
         listeners.add(listener);
     }
 
+    /**
+     * 移除OAuth完成事件监听器实例
+     * @param listener 监听器实例
+     */
     public void removeOAuthFinishListener(OAuthFinishEventListener listener) {
         if (listeners == null)
             return;
@@ -53,6 +61,10 @@ public class MicrosoftOAuthDeviceFlowMethods {
         }
     }
 
+    /**
+     * 使用设备代码流登录
+     * @param scopes OAuth Scope选项
+     */
     public void build(String[] scopes) {
         DeviceGet(scopes);
     }

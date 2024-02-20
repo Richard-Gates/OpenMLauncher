@@ -13,6 +13,10 @@ import java.util.Random;
 import java.util.UUID;
 
 public class OfflineController {
+    /**
+     * 创建离线模式账户
+     * @param user_name 账户名
+     */
     public void build(String user_name) {
         UUID uuid = UUID.nameUUIDFromBytes(user_name.getBytes());
         String token = UUID.randomUUID().toString().replace("-", "");

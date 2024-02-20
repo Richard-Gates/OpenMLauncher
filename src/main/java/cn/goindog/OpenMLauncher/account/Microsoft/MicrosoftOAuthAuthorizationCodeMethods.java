@@ -62,6 +62,10 @@ public class MicrosoftOAuthAuthorizationCodeMethods {
         }
     }
 
+    /**
+     * 使用授权代码流登录
+     * @param method 授权代码流登录界面显示方法实例
+     */
     public void build(MicrosoftOAuthCodeMethod method) {
         GetCode(method);
     }

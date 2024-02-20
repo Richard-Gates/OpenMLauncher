@@ -8,6 +8,10 @@ import java.io.File;
 import java.util.Objects;
 
 public class GameController {
+    /**
+     * 获取已经安装的游戏版本
+     * @return 以com.google.gson.JsonArray数组形式返回已安装版本列表
+     */
     public JsonArray getInstalledVersions() {
         JsonArray installedVersions = new Gson().fromJson("[]", JsonArray.class);
         File versionDir = new File(
@@ -21,6 +25,11 @@ public class GameController {
         }
         return installedVersions;
     }
+
+    /**
+     * 卸载游戏
+     * @param versionName 游戏版本
+     */
 
     public void uninstallVersion(String versionName) {
         File versionsDir = new File(
