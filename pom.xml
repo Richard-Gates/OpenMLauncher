@@ -6,7 +6,7 @@
 
     <groupId>cn.goindog</groupId>
     <artifactId>OpenMLauncher</artifactId>
-    <version>SE build 10</version>
+    <version>1.0.0-dev</version>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
