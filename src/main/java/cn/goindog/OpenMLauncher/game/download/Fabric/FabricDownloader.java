@@ -16,6 +16,11 @@ import java.nio.charset.StandardCharsets;
 public class FabricDownloader {
     private String installerUrl = "https://maven.fabricmc.net/net/fabricmc/fabric-installer/1.0.0/fabric-installer-1.0.0.jar";
 
+    /**
+     * 下载Fabric版Minecraft
+     * @param profile Fabric安装配置实例
+     * @throws IOException 对文件进行IO操作
+     */
     public void build(FabricInstallProfile profile) throws IOException {
         PrivateInstallDownload(profile);
     }
@@ -170,7 +175,7 @@ public class FabricDownloader {
         FileUtils.writeStringToFile(new File(profileDir), profilesObj.toString(), StandardCharsets.UTF_8);
     }
 
-    public static String consumeInputStream(InputStream is) throws IOException {
+    private static String consumeInputStream(InputStream is) throws IOException {
         BufferedReader br = new BufferedReader(new InputStreamReader(is, "GBK"));
         String s;
         StringBuilder sb = new StringBuilder();

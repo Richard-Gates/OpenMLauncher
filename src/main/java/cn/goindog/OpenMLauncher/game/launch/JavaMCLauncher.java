@@ -209,7 +209,7 @@ public class JavaMCLauncher {
                                     }
                                 } else {
                                     for (JsonElement e : element.getAsJsonObject().get("value").getAsJsonArray()) {
-                                        if (!element.getAsJsonObject().get("value").getAsString().contains(" ")) {
+                                        if (!e.getAsString().contains(" ")) {
                                             JVMBuilder.append(" ").append(e.getAsString()).append(" ");
                                         } else {
                                             JVMBuilder.append(" \"").append(e.getAsString()).append("\"");

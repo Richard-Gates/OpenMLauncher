@@ -345,13 +345,17 @@ public class MicrosoftController {
                         }
                         System.out.println("[INFO]Writing 'user.json' file");
                         FileUtils.writeStringToFile(user_config_file, config_obj.toString(), "utf-8");
+                        fireWorkspaceStarted("OAuthFinish");
                         System.out.println("[INFO]Write 'user.json' file complete");
                     } else {
                         JsonArray arr = new Gson().fromJson("[]", JsonArray.class);
                         arr.add(new_arr_obj);
                         config_obj.add("users", arr);
                         config_obj.addProperty("selector", 0);
+                        System.out.println("[INFO]Writing 'user.json' file");
                         FileUtils.writeStringToFile(user_config_file, config_obj.toString(), "utf-8");
+                        System.out.println("[INFO]Write 'user.json' file complete");
+                        fireWorkspaceStarted("OAuthFinish");
                     }
                 } catch (IOException e) {
                     throw new RuntimeException(e);
@@ -359,7 +363,6 @@ public class MicrosoftController {
             } else {
                 System.out.println("Bad Connection:" + code);
             }
-            fireWorkspaceStarted("OAuthFinish");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

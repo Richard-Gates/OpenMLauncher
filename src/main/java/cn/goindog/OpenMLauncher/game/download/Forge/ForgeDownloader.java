@@ -18,6 +18,11 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
 public class ForgeDownloader {
+    /**
+     * 获取所有Forge版本
+     * @return 返回所有版本的JsonObject对象
+     * @throws IOException 对远程服务器进行访问
+     */
     public JsonObject getAllForgeVersion() throws IOException {
         String canUseForgeVersionStr = IOUtils.toString(new URL("https://bmclapi2.bangbang93.com/forge/minecraft"));
         JsonArray canUseForgeVersionArr = new Gson().fromJson(canUseForgeVersionStr, JsonArray.class);
@@ -30,6 +35,11 @@ public class ForgeDownloader {
         return obj;
     }
 
+    /**
+     * 下载Forge版本
+     * @param profile 安装配置实例
+     * @throws IOException 对文件进行写入操作
+     */
     public void build(ForgeInstallProfile profile) throws IOException {
 
         String forgeVer = profile.getForgeVer();

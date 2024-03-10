@@ -23,8 +23,9 @@ public class VanillaDownloader {
     public String gameDir = System.getProperty("user.dir") + "/.minecraft";
     private static String verName = "";
     private static String gameDownloadDir = System.getProperty("oml.gameDir") + "/versions/" + verName;
-
     private Collection listeners;
+    private boolean assetsStatus = false;
+    private boolean librariesStatus = false;
 
     public void addDownloadFinishListener(DownloadFinishEventListener listener) {
         if (listeners == null) {
@@ -118,6 +119,7 @@ public class VanillaDownloader {
         }
         File assets = new File(assetPath.replace("objects", "indexes") + File.separator + AssetsId + ".json");
         FileUtils.writeByteArrayToFile(assets, IOUtils.toByteArray(asset_index));
+
         Thread th1 = new Thread(() -> {
             for (int i = 0; i < asset_json_keys.size() / 8; i++) {
                 String key = asset_json_keys.get(i).getAsString();
@@ -263,6 +265,23 @@ public class VanillaDownloader {
         th7.start();
         th8.start();
 
+        new Thread(() -> {
+            while (true) {
+                if (
+                        th1.getState() == Thread.State.TERMINATED
+                                && th2.getState() == Thread.State.TERMINATED
+                                && th3.getState() == Thread.State.TERMINATED
+                                && th4.getState() == Thread.State.TERMINATED
+                                && th5.getState() == Thread.State.TERMINATED
+                                && th6.getState() == Thread.State.TERMINATED
+                                && th7.getState() == Thread.State.TERMINATED
+                                && th8.getState() == Thread.State.TERMINATED
+                ) {
+                    this.assetsStatus = true;
+                    break;
+                }
+            }
+        }).start();
         System.out.println("[INFO]Vanilla Downloader: Libraries download thread started.");
         String path = System.getProperty("oml.gameDir") + "/libraries/";
         PrivateLibrariesDownload(libraries, path);
@@ -692,7 +711,24 @@ public class VanillaDownloader {
         download_th3.start();
         download_th4.start();
 
-        fireWorkspaceStarted("Download Finish");
+        new Thread(() -> {
+            while (true) {
+                if (
+                        download_th1.getState() == Thread.State.TERMINATED
+                                && download_th2.getState() == Thread.State.TERMINATED
+                                && download_th3.getState() == Thread.State.TERMINATED
+                                && download_th4.getState() == Thread.State.TERMINATED
+                                && assetsStatus
+                ) {
+                    new Thread(() -> {
+                        fireWorkspaceStarted("Download Finish");
+                    }).start();
+                    break;
+                }
+            }
+        }).start();
+
+
     }
 
     private void nativeDownload(String libDirPath, String relativePath, JsonArray libraries, int i, String url) {
