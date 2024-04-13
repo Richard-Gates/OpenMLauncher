@@ -99,7 +99,13 @@ public class VanillaDownloader {
         var clientJarUrl = versionJsonObj.getAsJsonObject("downloads").getAsJsonObject("client").get("url").getAsString();
         FileUtils.writeByteArrayToFile(new File(gameDownloadDir + File.separator + profile.getVersionName() + ".jar"), IOUtils.toByteArray(new URL(clientJarUrl)));
         String assetsIndexUrl = versionJsonObj.getAsJsonObject("assetIndex").get("url").getAsString();
-        PrivateAssetDownload(new URL(assetsIndexUrl), System.getProperty("oml.gameDir") + "/assets/objects/", versionJsonObj.getAsJsonObject("assetIndex").get("id").getAsString(), versionJsonObj.getAsJsonArray("libraries"));
+        PrivateAssetDownload(
+                new URL(assetsIndexUrl),
+                System.getProperty("oml.gameDir") + "/assets/objects/",
+                versionJsonObj.getAsJsonObject("assetIndex").get("id").getAsString(),
+                versionJsonObj.getAsJsonArray("libraries"),
+                32
+        );
         writeVersionJson(gameDownloadDir, versionJson, profile);
     }
 
@@ -111,7 +117,7 @@ public class VanillaDownloader {
         }
     }
 
-    private void PrivateAssetDownload(URL asset_index, String assetPath, String AssetsId, JsonArray libraries) throws IOException {
+    private void PrivateAssetDownload(URL asset_index, String assetPath, String AssetsId, JsonArray libraries,int threadTimes) throws IOException {
         JsonObject asset_json_obj = new Gson().fromJson(IOUtils.toString(asset_index, StandardCharsets.UTF_8), JsonObject.class).getAsJsonObject("objects");
         JsonArray asset_json_keys = new Gson().fromJson("[]", JsonArray.class);
         for (String s : asset_json_obj.keySet()) {
@@ -120,175 +126,45 @@ public class VanillaDownloader {
         File assets = new File(assetPath.replace("objects", "indexes") + File.separator + AssetsId + ".json");
         FileUtils.writeByteArrayToFile(assets, IOUtils.toByteArray(asset_index));
 
-        Thread th1 = new Thread(() -> {
-            for (int i = 0; i < asset_json_keys.size() / 8; i++) {
-                String key = asset_json_keys.get(i).getAsString();
-                String hash = asset_json_obj.getAsJsonObject(key).get("hash").getAsString();
-                String path = assetPath + "/" + hash.substring(0, 2) + "/" + hash;
+        final double[] count = {0};
 
-                try {
-                    File assetFile = new File(path);
-                    if (!assetFile.exists()) {
-                        System.out.println("[INFO]Vanilla Downloader: Downloading asset:" + key);
-                        FileUtils.writeByteArrayToFile(assetFile, IOUtils.toByteArray(PrivateSummonAssetDownloadUrl(hash)));
-                    }
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        });
-        Thread th2 = new Thread(() -> {
-            for (int i = asset_json_keys.size() / 8; i < asset_json_keys.size() / 4; i++) {
-                String key = asset_json_keys.get(i).getAsString();
-                String hash = asset_json_obj.getAsJsonObject(key).get("hash").getAsString();
-                String path = assetPath + "/" + hash.substring(0, 2) + "/" + hash;
 
-                try {
-                    File assetFile = new File(path);
-                    if (!assetFile.exists()) {
-                        System.out.println("[INFO]Vanilla Downloader: Downloading asset:" + key);
-                        FileUtils.writeByteArrayToFile(assetFile, IOUtils.toByteArray(PrivateSummonAssetDownloadUrl(hash)));
-                    }
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        });
-        Thread th3 = new Thread(() -> {
-            for (int i = asset_json_keys.size() / 4; i < asset_json_keys.size() / 8 * 3; i++) {
-                String key = asset_json_keys.get(i).getAsString();
-                String hash = asset_json_obj.getAsJsonObject(key).get("hash").getAsString();
-                String path = assetPath + "/" + hash.substring(0, 2) + "/" + hash;
+        for (int time = 0;time < threadTimes; time++) {
+            int finalTime = time;
+            Thread th = new Thread(() -> {
+                for (int i = 0; i < asset_json_keys.size() / threadTimes * (finalTime + 1); i++) {
+                    String key = asset_json_keys.get(i).getAsString();
+                    String hash = asset_json_obj.getAsJsonObject(key).get("hash").getAsString();
+                    String path = assetPath + "/" + hash.substring(0, 2) + "/" + hash;
 
-                try {
-                    File assetFile = new File(path);
-                    if (!assetFile.exists()) {
-                        System.out.println("[INFO]Vanilla Downloader: Downloading asset:" + key);
-                        FileUtils.writeByteArrayToFile(assetFile, IOUtils.toByteArray(PrivateSummonAssetDownloadUrl(hash)));
+                    try {
+                        File assetFile = new File(path);
+                        if (!assetFile.exists()) {
+                            System.out.println("[INFO]Vanilla Downloader: Downloading asset:" + key);
+                            FileUtils.writeByteArrayToFile(assetFile, IOUtils.toByteArray(PrivateSummonAssetDownloadUrl(hash)));
+                        }
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
                     }
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
+                    count[0]++;
                 }
-            }
-        });
-        Thread th4 = new Thread(() -> {
-            for (int i = asset_json_keys.size() / 8 * 3; i < asset_json_keys.size() / 2; i++) {
-                String key = asset_json_keys.get(i).getAsString();
-                String hash = asset_json_obj.getAsJsonObject(key).get("hash").getAsString();
-                String path = assetPath + "/" + hash.substring(0, 2) + "/" + hash;
-
-                try {
-                    File assetFile = new File(path);
-                    if (!assetFile.exists()) {
-                        System.out.println("[INFO]Vanilla Downloader: Downloading asset:" + key);
-                        FileUtils.writeByteArrayToFile(assetFile, IOUtils.toByteArray(PrivateSummonAssetDownloadUrl(hash)));
-                    }
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        });
-        Thread th5 = new Thread(() -> {
-            for (int i = asset_json_keys.size() / 2; i < asset_json_keys.size() / 8 * 5; i++) {
-                String key = asset_json_keys.get(i).getAsString();
-                String hash = asset_json_obj.getAsJsonObject(key).get("hash").getAsString();
-                String path = assetPath + "/" + hash.substring(0, 2) + "/" + hash;
-
-                try {
-                    File assetFile = new File(path);
-                    if (!assetFile.exists()) {
-                        System.out.println("[INFO]Vanilla Downloader: Downloading asset:" + key);
-                        FileUtils.writeByteArrayToFile(assetFile, IOUtils.toByteArray(PrivateSummonAssetDownloadUrl(hash)));
-                    }
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        });
-        Thread th6 = new Thread(() -> {
-            for (int i = asset_json_keys.size() / 8 * 5; i < asset_json_keys.size() / 4 * 3; i++) {
-                String key = asset_json_keys.get(i).getAsString();
-                String hash = asset_json_obj.getAsJsonObject(key).get("hash").getAsString();
-                String path = assetPath + "/" + hash.substring(0, 2) + "/" + hash;
-
-                try {
-                    File assetFile = new File(path);
-                    if (!assetFile.exists()) {
-                        System.out.println("[INFO]Vanilla Downloader: Downloading asset:" + key);
-                        FileUtils.writeByteArrayToFile(assetFile, IOUtils.toByteArray(PrivateSummonAssetDownloadUrl(hash)));
-                    }
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        });
-        Thread th7 = new Thread(() -> {
-            for (int i = asset_json_keys.size() / 4 * 3; i < asset_json_keys.size() / 8 * 7; i++) {
-                String key = asset_json_keys.get(i).getAsString();
-                String hash = asset_json_obj.getAsJsonObject(key).get("hash").getAsString();
-                String path = assetPath + "/" + hash.substring(0, 2) + "/" + hash;
-
-                try {
-                    File assetFile = new File(path);
-                    if (!assetFile.exists()) {
-                        System.out.println("[INFO]Vanilla Downloader: Downloading asset:" + key);
-                        FileUtils.writeByteArrayToFile(assetFile, IOUtils.toByteArray(PrivateSummonAssetDownloadUrl(hash)));
-                    }
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        });
-        Thread th8 = new Thread(() -> {
-            for (int i = asset_json_keys.size() / 8 * 7; i < asset_json_keys.size(); i++) {
-                String key = asset_json_keys.get(i).getAsString();
-                String hash = asset_json_obj.getAsJsonObject(key).get("hash").getAsString();
-                String path = assetPath + "/" + hash.substring(0, 2) + "/" + hash;
-
-                try {
-                    File assetFile = new File(path);
-                    if (!assetFile.exists()) {
-                        System.out.println("[INFO]Vanilla Downloader: Downloading asset:" + key);
-                        FileUtils.writeByteArrayToFile(assetFile, IOUtils.toByteArray(PrivateSummonAssetDownloadUrl(hash)));
-                    }
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        });
-        th1.start();
-        th2.start();
-        th3.start();
-        th4.start();
-        th5.start();
-        th6.start();
-        th7.start();
-        th8.start();
+            });
+            th.start();
+        }
 
         new Thread(() -> {
             while (true) {
-                if (
-                        th1.getState() == Thread.State.TERMINATED
-                                && th2.getState() == Thread.State.TERMINATED
-                                && th3.getState() == Thread.State.TERMINATED
-                                && th4.getState() == Thread.State.TERMINATED
-                                && th5.getState() == Thread.State.TERMINATED
-                                && th6.getState() == Thread.State.TERMINATED
-                                && th7.getState() == Thread.State.TERMINATED
-                                && th8.getState() == Thread.State.TERMINATED
-                ) {
-                    this.assetsStatus = true;
-                    break;
+                if (count[0] == threadTimes) {
+                    System.out.println("[INFO]Vanilla Downloader: Libraries download thread started.");
+                    String path = System.getProperty("oml.gameDir") + "/libraries/";
+                    PrivateLibrariesDownload(libraries, path, 20);
                 }
             }
         }).start();
-        System.out.println("[INFO]Vanilla Downloader: Libraries download thread started.");
-        String path = System.getProperty("oml.gameDir") + "/libraries/";
-        PrivateLibrariesDownload(libraries, path);
     }
 
     public void reDownloadFiles(URL assetsIndex, String assetsPath, String assetsId, JsonArray libraries) throws IOException {
-        PrivateAssetDownload(assetsIndex, assetsPath, assetsId, libraries);
+        PrivateAssetDownload(assetsIndex, assetsPath, assetsId, libraries,64);
     }
 
     private static URL PrivateSummonAssetDownloadUrl(String assetHash) throws MalformedURLException {
@@ -296,435 +172,122 @@ public class VanillaDownloader {
         return new URL(url);
     }
 
-    private void PrivateLibrariesDownload(JsonArray libraries, String libDirPath) {
-        Thread download_th1 = new Thread(() -> {
-            for (int i = 0; i < libraries.size() / 4; i++) {
-                if (!libraries.get(i).getAsJsonObject().has("downloads")) {
-                    String[] packageFull = libraries.get(i).getAsJsonObject().get("name").getAsString().split(":");
-                    String packagePath = packageFull[0].replace(".", "/");
-                    String packageName = packageFull[1];
-                    String packageVersion = packageFull[2];
-                    String relativePath = packagePath + "/" + packageName + "/" + packageVersion + "/" + packageName + "-" + packageVersion + ".jar";
+    private void PrivateLibrariesDownload(JsonArray libraries, String libDirPath, int threadTimes) {
+        final double[] count = {0};
+        for (int times = 0; times < threadTimes; times++) {
+            int finalTimes = times;
+            new Thread(() -> {
+                for (int i = 0; i < libraries.size() / threadTimes * (finalTimes + 1); i++) {
+                    if (!libraries.get(i).getAsJsonObject().has("downloads")) {
+                        String[] packageFull = libraries.get(i).getAsJsonObject().get("name").getAsString().split(":");
+                        String packagePath = packageFull[0].replace(".", "/");
+                        String packageName = packageFull[1];
+                        String packageVersion = packageFull[2];
+                        String relativePath = packagePath + "/" + packageName + "/" + packageVersion + "/" + packageName + "-" + packageVersion + ".jar";
 
-                    String host = libraries.get(i).getAsJsonObject().get("url").getAsString();
+                        String host = libraries.get(i).getAsJsonObject().get("url").getAsString();
 
-                    try {
-                        FileUtils.writeByteArrayToFile(
-                                new File(
-                                        libDirPath
-                                                + File.separator
-                                                + relativePath
-                                ),
-                                IOUtils.toByteArray(
-                                        new URL(
-                                                host + relativePath
-                                        )
-                                )
-                        );
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                    continue;
-                }
-                JsonObject downloads_obj = libraries.get(i).getAsJsonObject().getAsJsonObject("downloads");
-                if (downloads_obj.has("artifact")) {
-                    String relativePath = downloads_obj.getAsJsonObject("artifact").get("path").getAsString();
-                    String absolutePath = libDirPath + "/" + relativePath;
-                    String url = downloads_obj.getAsJsonObject("artifact").get("url").getAsString();
-                    System.out.println("[INFO]Vanilla Downloader: Downloading libraries:" + libraries.get(i).getAsJsonObject().get("name").getAsString());
-                    try {
-                        FileUtils.writeByteArrayToFile(new File(absolutePath), IOUtils.toByteArray(new URL(url)));
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-                String relativePath = "";
-                String url = "";
-                if (downloads_obj.has("classifiers")) {
-                    if (System.getProperty("os.name").contains("Windows") && downloads_obj.getAsJsonObject("classifiers").has("natives-windows")) {
-                        relativePath = downloads_obj.getAsJsonObject("classifiers").getAsJsonObject("natives-windows").get("path").getAsString();
-                        url = downloads_obj.getAsJsonObject("classifiers").getAsJsonObject("natives-windows").get("url").getAsString();
-                        nativeDownload(libDirPath, relativePath, libraries, i, url);
-                    } else if (System.getProperty("os.name").contains("Linux") && downloads_obj.getAsJsonObject("classifiers").has("natives-linux")) {
-                        relativePath = downloads_obj.getAsJsonObject("classifiers").getAsJsonObject("natives-linux").get("path").getAsString();
-                        url = downloads_obj.getAsJsonObject("classifiers").getAsJsonObject("natives-linux").get("url").getAsString();
-                        nativeDownload(libDirPath, relativePath, libraries, i, url);
-                    } else if (System.getProperty("os.name").contains("MacOS") && downloads_obj.getAsJsonObject("classifiers").has("natives-osx")) {
-                        relativePath = downloads_obj.getAsJsonObject("classifiers").getAsJsonObject("natives-osx").get("path").getAsString();
-                        url = downloads_obj.getAsJsonObject("classifiers").getAsJsonObject("natives-osx").get("url").getAsString();
-                        nativeDownload(libDirPath, relativePath, libraries, i, url);
-                    }
-                } else if (
-                        downloads_obj.has("rules")
-                                &&
-                                downloads_obj.getAsJsonArray("rules").get(0).getAsJsonObject().has("os")
-                ) {
-                    String os_name = downloads_obj.getAsJsonArray("rules")
-                            .get(0).getAsJsonObject()
-                            .getAsJsonObject("os")
-                            .get("name").getAsString();
-                    JsonObject artifact = downloads_obj.getAsJsonObject("artifact");
-                    if (System.getProperty("os.name").contains(os_name)) {
-                        relativePath = artifact.get("path").getAsString();
-                        url = artifact.get("url").getAsString();
-                        String absolutePath = libDirPath + "/" + relativePath;
-                        System.out.println("[INFO]Vanilla Downloader: Downloading native:" + libraries.get(i).getAsJsonObject().get("name").getAsString());
                         try {
-                            FileUtils.writeByteArrayToFile(new File(absolutePath), IOUtils.toByteArray(new URL(url)));
-                            var nativeDir = System.getProperty("oml.gameDir")
-                                    + File.separator
-                                    + "versions"
-                                    + File.separator
-                                    + verName
-                                    + File.separator
-                                    + "natives"
-                                    + File.separator;
-                            var jarFile = new JarFile(absolutePath);
-                            var entries = jarFile.entries();
-                            while (entries.hasMoreElements()) {
-                                var jarEntry = entries.nextElement();
-                                if (jarEntry.isDirectory() || jarEntry.getName().contains("META-INF")) {
-                                    continue;
-                                }
-
-                                var inputStream = jarFile.getInputStream(jarEntry);
-                                FileUtils.writeByteArrayToFile(new File(nativeDir + File.separator + jarEntry.getName()), IOUtils.toByteArray(inputStream));
-                                inputStream.close();
-                            }
-                            jarFile.close();
+                            FileUtils.writeByteArrayToFile(
+                                    new File(
+                                            libDirPath
+                                                    + File.separator
+                                                    + relativePath
+                                    ),
+                                    IOUtils.toByteArray(
+                                    new URL(
+                                                    host + relativePath
+                                            )
+                                    )
+                            );
                         } catch (IOException e) {
                             throw new RuntimeException(e);
                         }
                     }
-                }
-            }
-        });
-        Thread download_th2 = new Thread(() -> {
-            for (int i = libraries.size() / 4; i < libraries.size() / 2; i++) {
-                if (!libraries.get(i).getAsJsonObject().has("downloads")) {
-                    String[] packageFull = libraries.get(i).getAsJsonObject().get("name").getAsString().split(":");
-                    String packagePath = packageFull[0].replace(".", "/");
-                    String packageName = packageFull[1];
-                    String packageVersion = packageFull[2];
-                    String relativePath = packagePath + "/" + packageName + "/" + packageVersion + "/" + packageName + "-" + packageVersion + ".jar";
-
-                    String host = libraries.get(i).getAsJsonObject().get("url").getAsString();
-
-                    try {
-                        FileUtils.writeByteArrayToFile(
-                                new File(
-                                        libDirPath
-                                                + File.separator
-                                                + relativePath
-                                ),
-                                IOUtils.toByteArray(
-                                        new URL(
-                                                host + relativePath
-                                        )
-                                )
-                        );
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                    continue;
-                }
-                JsonObject downloads_obj = libraries.get(i).getAsJsonObject().getAsJsonObject("downloads");
-                if (downloads_obj.has("artifact")) {
-                    String relativePath = downloads_obj.getAsJsonObject("artifact").get("path").getAsString();
-                    String absolutePath = libDirPath + "/" + relativePath;
-                    String url = downloads_obj.getAsJsonObject("artifact").get("url").getAsString();
-                    System.out.println("[INFO]Vanilla Downloader: Downloading libraries:" + libraries.get(i).getAsJsonObject().get("name").getAsString());
-                    try {
-                        FileUtils.writeByteArrayToFile(new File(absolutePath), IOUtils.toByteArray(new URL(url)));
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-                String relativePath = "";
-                String url = "";
-                if (downloads_obj.has("classifiers")) {
-                    if (System.getProperty("os.name").contains("Windows") && downloads_obj.getAsJsonObject("classifiers").has("natives-windows")) {
-                        relativePath = downloads_obj.getAsJsonObject("classifiers").getAsJsonObject("natives-windows").get("path").getAsString();
-                        url = downloads_obj.getAsJsonObject("classifiers").getAsJsonObject("natives-windows").get("url").getAsString();
-                        nativeDownload(libDirPath, relativePath, libraries, i, url);
-                    } else if (System.getProperty("os.name").contains("Linux") && downloads_obj.getAsJsonObject("classifiers").has("natives-linux")) {
-                        relativePath = downloads_obj.getAsJsonObject("classifiers").getAsJsonObject("natives-linux").get("path").getAsString();
-                        url = downloads_obj.getAsJsonObject("classifiers").getAsJsonObject("natives-linux").get("url").getAsString();
-                        nativeDownload(libDirPath, relativePath, libraries, i, url);
-                    } else if (System.getProperty("os.name").contains("MacOS") && downloads_obj.getAsJsonObject("classifiers").has("natives-osx")) {
-                        relativePath = downloads_obj.getAsJsonObject("classifiers").getAsJsonObject("natives-osx").get("path").getAsString();
-                        url = downloads_obj.getAsJsonObject("classifiers").getAsJsonObject("natives-osx").get("url").getAsString();
-                        nativeDownload(libDirPath, relativePath, libraries, i, url);
-                    }
-                } else if (
-                        downloads_obj.has("rules")
-                                &&
-                                downloads_obj.getAsJsonArray("rules").get(0).getAsJsonObject().has("os")
-                ) {
-                    String os_name = downloads_obj.getAsJsonArray("rules")
-                            .get(0).getAsJsonObject()
-                            .getAsJsonObject("os")
-                            .get("name").getAsString();
-                    JsonObject artifact = downloads_obj.getAsJsonObject("artifact");
-                    if (System.getProperty("os.name").contains(os_name)) {
-                        relativePath = artifact.get("path").getAsString();
-                        url = artifact.get("url").getAsString();
-                        String absolutePath = libDirPath + "/" + relativePath;
-                        System.out.println("[INFO]Vanilla Downloader: Downloading native:" + libraries.get(i).getAsJsonObject().get("name").getAsString());
-                        try {
-                            FileUtils.writeByteArrayToFile(new File(absolutePath), IOUtils.toByteArray(new URL(url)));
-                            var nativeDir = System.getProperty("oml.gameDir")
-                                    + File.separator
-                                    + "versions"
-                                    + File.separator
-                                    + verName
-                                    + File.separator
-                                    + "natives"
-                                    + File.separator;
-                            var jarFile = new JarFile(absolutePath);
-                            var entries = jarFile.entries();
-                            while (entries.hasMoreElements()) {
-                                var jarEntry = entries.nextElement();
-                                if (jarEntry.isDirectory() || jarEntry.getName().contains("META-INF")) {
-                                    continue;
-                                }
-
-                                var inputStream = jarFile.getInputStream(jarEntry);
-                                FileUtils.writeByteArrayToFile(new File(nativeDir + File.separator + jarEntry.getName()), IOUtils.toByteArray(inputStream));
-                                inputStream.close();
+                    JsonObject downloads_obj = libraries.get(i).getAsJsonObject().getAsJsonObject("downloads");
+                    if (downloads_obj.has("artifact")) {
+                        String relativePath = "";
+                        String url = "";
+                        if (downloads_obj.has("classifiers")) {
+                            if (System.getProperty("os.name").contains("Windows") && downloads_obj.getAsJsonObject("classifiers").has("natives-windows")) {
+                                relativePath = downloads_obj.getAsJsonObject("classifiers").getAsJsonObject("natives-windows").get("path").getAsString();
+                                url = downloads_obj.getAsJsonObject("classifiers").getAsJsonObject("natives-windows").get("url").getAsString();
+                                nativeDownload(libDirPath, relativePath, libraries, i, url);
+                            } else if (System.getProperty("os.name").contains("Linux") && downloads_obj.getAsJsonObject("classifiers").has("natives-linux")) {
+                                relativePath = downloads_obj.getAsJsonObject("classifiers").getAsJsonObject("natives-linux").get("path").getAsString();
+                                url = downloads_obj.getAsJsonObject("classifiers").getAsJsonObject("natives-linux").get("url").getAsString();
+                                nativeDownload(libDirPath, relativePath, libraries, i, url);
+                            } else if (System.getProperty("os.name").contains("Mac OS") && downloads_obj.getAsJsonObject("classifiers").has("natives-macos")) {
+                                relativePath = downloads_obj.getAsJsonObject("classifiers").getAsJsonObject("natives-macos").get("path").getAsString();
+                                url = downloads_obj.getAsJsonObject("classifiers").getAsJsonObject("natives-macos").get("url").getAsString();
+                                nativeDownload(libDirPath, relativePath, libraries, i, url);
                             }
-                            jarFile.close();
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
-                        }
-                    }
-                }
-            }
-        });
-        Thread download_th3 = new Thread(() -> {
-            for (int i = libraries.size() / 2; i < libraries.size() / 4 * 3; i++) {
-                if (!libraries.get(i).getAsJsonObject().has("downloads")) {
-                    String[] packageFull = libraries.get(i).getAsJsonObject().get("name").getAsString().split(":");
-                    String packagePath = packageFull[0].replace(".", "/");
-                    String packageName = packageFull[1];
-                    String packageVersion = packageFull[2];
-                    String relativePath = packagePath + "/" + packageName + "/" + packageVersion + "/" + packageName + "-" + packageVersion + ".jar";
+                        } else if (
+                                downloads_obj.has("rules")
+                                        &&
+                                        downloads_obj.getAsJsonArray("rules").get(0).getAsJsonObject().has("os")
+                        ) {
+                            String os_name = downloads_obj.getAsJsonArray("rules")
+                                    .get(0).getAsJsonObject()
+                                    .getAsJsonObject("os")
+                                    .get("name").getAsString();
+                            JsonObject artifact = downloads_obj.getAsJsonObject("artifact");
+                            if (System.getProperty("os.name").contains(os_name)) {
+                                relativePath = artifact.get("path").getAsString();
+                                url = artifact.get("url").getAsString();
+                                String absolutePath = libDirPath + "/" + relativePath;
+                                System.out.println("[INFO]Vanilla Downloader: Downloading native:" + libraries.get(i).getAsJsonObject().get("name").getAsString());
+                                try {
+                                    FileUtils.writeByteArrayToFile(new File(absolutePath), IOUtils.toByteArray(new URL(url)));
+                                    var nativeDir = System.getProperty("oml.gameDir")
+                                            + File.separator
+                                            + "versions"
+                                            + File.separator
+                                            + verName
+                                            + File.separator
+                                            + "natives"
+                                            + File.separator;
+                                    var jarFile = new JarFile(absolutePath);
+                                    var entries = jarFile.entries();
+                                    while (entries.hasMoreElements()) {
+                                        var jarEntry = entries.nextElement();
+                                        if (jarEntry.isDirectory() || jarEntry.getName().contains("META-INF")) {
+                                            continue;
+                                        }
 
-                    String host = libraries.get(i).getAsJsonObject().get("url").getAsString();
-
-                    try {
-                        FileUtils.writeByteArrayToFile(
-                                new File(
-                                        libDirPath
-                                                + File.separator
-                                                + relativePath
-                                ),
-                                IOUtils.toByteArray(
-                                        new URL(
-                                                host + relativePath
-                                        )
-                                )
-                        );
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                    continue;
-                }
-                JsonObject downloads_obj = libraries.get(i).getAsJsonObject().getAsJsonObject("downloads");
-                if (downloads_obj.has("artifact")) {
-                    String relativePath = downloads_obj.getAsJsonObject("artifact").get("path").getAsString();
-                    String absolutePath = libDirPath + "/" + relativePath;
-                    String url = downloads_obj.getAsJsonObject("artifact").get("url").getAsString();
-                    System.out.println("[INFO]Vanilla Downloader: Downloading libraries:" + libraries.get(i).getAsJsonObject().get("name").getAsString());
-                    try {
-                        FileUtils.writeByteArrayToFile(new File(absolutePath), IOUtils.toByteArray(new URL(url)));
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-                String relativePath = "";
-                String url = "";
-                if (downloads_obj.has("classifiers")) {
-                    if (System.getProperty("os.name").contains("Windows") && downloads_obj.getAsJsonObject("classifiers").has("natives-windows")) {
-                        relativePath = downloads_obj.getAsJsonObject("classifiers").getAsJsonObject("natives-windows").get("path").getAsString();
-                        url = downloads_obj.getAsJsonObject("classifiers").getAsJsonObject("natives-windows").get("url").getAsString();
-                        nativeDownload(libDirPath, relativePath, libraries, i, url);
-                    } else if (System.getProperty("os.name").contains("Linux") && downloads_obj.getAsJsonObject("classifiers").has("natives-linux")) {
-                        relativePath = downloads_obj.getAsJsonObject("classifiers").getAsJsonObject("natives-linux").get("path").getAsString();
-                        url = downloads_obj.getAsJsonObject("classifiers").getAsJsonObject("natives-linux").get("url").getAsString();
-                        nativeDownload(libDirPath, relativePath, libraries, i, url);
-                    } else if (System.getProperty("os.name").contains("MacOS") && downloads_obj.getAsJsonObject("classifiers").has("natives-osx")) {
-                        relativePath = downloads_obj.getAsJsonObject("classifiers").getAsJsonObject("natives-osx").get("path").getAsString();
-                        url = downloads_obj.getAsJsonObject("classifiers").getAsJsonObject("natives-osx").get("url").getAsString();
-                        nativeDownload(libDirPath, relativePath, libraries, i, url);
-                    }
-                } else if (
-                        downloads_obj.has("rules")
-                                &&
-                                downloads_obj.getAsJsonArray("rules").get(0).getAsJsonObject().has("os")
-                ) {
-                    String os_name = downloads_obj.getAsJsonArray("rules")
-                            .get(0).getAsJsonObject()
-                            .getAsJsonObject("os")
-                            .get("name").getAsString();
-                    JsonObject artifact = downloads_obj.getAsJsonObject("artifact");
-                    if (System.getProperty("os.name").contains(os_name)) {
-                        relativePath = artifact.get("path").getAsString();
-                        url = artifact.get("url").getAsString();
-                        String absolutePath = libDirPath + "/" + relativePath;
-                        System.out.println("[INFO]Vanilla Downloader: Downloading native:" + libraries.get(i).getAsJsonObject().get("name").getAsString());
-                        try {
-                            FileUtils.writeByteArrayToFile(new File(absolutePath), IOUtils.toByteArray(new URL(url)));
-                            var nativeDir = System.getProperty("oml.gameDir")
-                                    + File.separator
-                                    + "versions"
-                                    + File.separator
-                                    + verName
-                                    + File.separator
-                                    + "natives"
-                                    + File.separator;
-                            var jarFile = new JarFile(absolutePath);
-                            var entries = jarFile.entries();
-                            while (entries.hasMoreElements()) {
-                                var jarEntry = entries.nextElement();
-                                if (jarEntry.isDirectory() || jarEntry.getName().contains("META-INF")) {
-                                    continue;
+                                        var inputStream = jarFile.getInputStream(jarEntry);
+                                        FileUtils.writeByteArrayToFile(new File(nativeDir + File.separator + jarEntry.getName()), IOUtils.toByteArray(inputStream));
+                                        inputStream.close();
+                                    }
+                                    jarFile.close();
+                                } catch (IOException e) {
+                                    throw new RuntimeException(e);
                                 }
-
-                                var inputStream = jarFile.getInputStream(jarEntry);
-                                FileUtils.writeByteArrayToFile(new File(nativeDir + File.separator + jarEntry.getName()), IOUtils.toByteArray(inputStream));
-                                inputStream.close();
                             }
-                            jarFile.close();
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
-                        }
-                    }
-                }
-            }
-        });
-        Thread download_th4 = new Thread(() -> {
-            for (int i = libraries.size() / 4 * 3; i < libraries.size(); i++) {
-                if (!libraries.get(i).getAsJsonObject().has("downloads")) {
-                    String[] packageFull = libraries.get(i).getAsJsonObject().get("name").getAsString().split(":");
-                    String packagePath = packageFull[0].replace(".", "/");
-                    String packageName = packageFull[1];
-                    String packageVersion = packageFull[2];
-                    String relativePath = packagePath + "/" + packageName + "/" + packageVersion + "/" + packageName + "-" + packageVersion + ".jar";
-
-                    String host = libraries.get(i).getAsJsonObject().get("url").getAsString();
-
-                    try {
-                        FileUtils.writeByteArrayToFile(
-                                new File(
-                                        libDirPath
-                                                + File.separator
-                                                + relativePath
-                                ),
-                                IOUtils.toByteArray(
-                                        new URL(
-                                                host + relativePath
-                                        )
-                                )
-                        );
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                    continue;
-                }
-                JsonObject downloads_obj = libraries.get(i).getAsJsonObject().getAsJsonObject("downloads");
-                if (downloads_obj.has("artifact")) {
-                    String relativePath = "";
-                    String url = "";
-                    if (downloads_obj.has("classifiers")) {
-                        if (System.getProperty("os.name").contains("Windows") && downloads_obj.getAsJsonObject("classifiers").has("natives-windows")) {
-                            relativePath = downloads_obj.getAsJsonObject("classifiers").getAsJsonObject("natives-windows").get("path").getAsString();
-                            url = downloads_obj.getAsJsonObject("classifiers").getAsJsonObject("natives-windows").get("url").getAsString();
-                            nativeDownload(libDirPath, relativePath, libraries, i, url);
-                        } else if (System.getProperty("os.name").contains("Linux") && downloads_obj.getAsJsonObject("classifiers").has("natives-linux")) {
-                            relativePath = downloads_obj.getAsJsonObject("classifiers").getAsJsonObject("natives-linux").get("path").getAsString();
-                            url = downloads_obj.getAsJsonObject("classifiers").getAsJsonObject("natives-linux").get("url").getAsString();
-                            nativeDownload(libDirPath, relativePath, libraries, i, url);
-                        } else if (System.getProperty("os.name").contains("Mac OS") && downloads_obj.getAsJsonObject("classifiers").has("natives-macos")) {
-                            relativePath = downloads_obj.getAsJsonObject("classifiers").getAsJsonObject("natives-macos").get("path").getAsString();
-                            url = downloads_obj.getAsJsonObject("classifiers").getAsJsonObject("natives-macos").get("url").getAsString();
-                            nativeDownload(libDirPath, relativePath, libraries, i, url);
-                        }
-                    } else if (
-                            downloads_obj.has("rules")
-                                    &&
-                                    downloads_obj.getAsJsonArray("rules").get(0).getAsJsonObject().has("os")
-                    ) {
-                        String os_name = downloads_obj.getAsJsonArray("rules")
-                                .get(0).getAsJsonObject()
-                                .getAsJsonObject("os")
-                                .get("name").getAsString();
-                        JsonObject artifact = downloads_obj.getAsJsonObject("artifact");
-                        if (System.getProperty("os.name").contains(os_name)) {
-                            relativePath = artifact.get("path").getAsString();
-                            url = artifact.get("url").getAsString();
+                        } else {
+                            relativePath = downloads_obj.getAsJsonObject("artifact").get("path").getAsString();
                             String absolutePath = libDirPath + "/" + relativePath;
-                            System.out.println("[INFO]Vanilla Downloader: Downloading native:" + libraries.get(i).getAsJsonObject().get("name").getAsString());
+                            url = downloads_obj.getAsJsonObject("artifact").get("url").getAsString();
+                            System.out.println("[INFO]Vanilla Downloader: Downloading libraries:" + libraries.get(i).getAsJsonObject().get("name").getAsString());
                             try {
                                 FileUtils.writeByteArrayToFile(new File(absolutePath), IOUtils.toByteArray(new URL(url)));
-                                var nativeDir = System.getProperty("oml.gameDir")
-                                        + File.separator
-                                        + "versions"
-                                        + File.separator
-                                        + verName
-                                        + File.separator
-                                        + "natives"
-                                        + File.separator;
-                                var jarFile = new JarFile(absolutePath);
-                                var entries = jarFile.entries();
-                                while (entries.hasMoreElements()) {
-                                    var jarEntry = entries.nextElement();
-                                    if (jarEntry.isDirectory() || jarEntry.getName().contains("META-INF")) {
-                                        continue;
-                                    }
-
-                                    var inputStream = jarFile.getInputStream(jarEntry);
-                                    FileUtils.writeByteArrayToFile(new File(nativeDir + File.separator + jarEntry.getName()), IOUtils.toByteArray(inputStream));
-                                    inputStream.close();
-                                }
-                                jarFile.close();
                             } catch (IOException e) {
                                 throw new RuntimeException(e);
                             }
                         }
-                    } else {
-                        relativePath = downloads_obj.getAsJsonObject("artifact").get("path").getAsString();
-                        String absolutePath = libDirPath + "/" + relativePath;
-                        url = downloads_obj.getAsJsonObject("artifact").get("url").getAsString();
-                        System.out.println("[INFO]Vanilla Downloader: Downloading libraries:" + libraries.get(i).getAsJsonObject().get("name").getAsString());
-                        try {
-                            FileUtils.writeByteArrayToFile(new File(absolutePath), IOUtils.toByteArray(new URL(url)));
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
-                        }
                     }
                 }
-            }
-        });
-        download_th1.start();
-        download_th2.start();
-        download_th3.start();
-        download_th4.start();
+                count[0]++;
+            }).start();
+        }
 
         new Thread(() -> {
             while (true) {
-                if (
-                        download_th1.getState() == Thread.State.TERMINATED
-                                && download_th2.getState() == Thread.State.TERMINATED
-                                && download_th3.getState() == Thread.State.TERMINATED
-                                && download_th4.getState() == Thread.State.TERMINATED
-                                && assetsStatus
-                ) {
-                    new Thread(() -> {
+                new Thread(() -> {
+                    if (count[0] == threadTimes && assetsStatus) {
                         fireWorkspaceStarted("Download Finish");
-                    }).start();
-                    break;
-                }
+                    }
+                }).start();
             }
         }).start();
 

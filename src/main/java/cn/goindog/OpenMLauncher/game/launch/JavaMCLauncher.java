@@ -14,13 +14,18 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 public class JavaMCLauncher {
+    private String launchCommand;
     private String gamePath;
 
     public String getGamePath() {
         return gamePath;
     }
 
-    public void build(String gameName) throws IOException, InterruptedException {
+    public String getLaunchCommand() {
+        return launchCommand;
+    }
+
+    public void setName(String gameName) throws IOException, InterruptedException {
         gamePath = System.getProperty("oml.gameDir") + "/versions/" + gameName;
         JsonObject versionJson = new Gson().fromJson(FileUtils.readFileToString(new File(gamePath + File.separator + gameName + ".json"), StandardCharsets.UTF_8), JsonObject.class);
         launch(versionJson, gameName);
@@ -65,33 +70,7 @@ public class JavaMCLauncher {
             String libDir = System.getProperty("oml.gameDir")
                     + "/libraries/";
 
-            String launchCommand = getLaunchCommand(uuid, mcToken, userName, type, assetIndex, assetsDir, gameDir, gameName, mainClass, libraries, argument, libDir);
-
-            String assetsIndexUrl = versionJson.get("assetIndex").getAsJsonObject().get("url").getAsString();
-
-
-            VanillaDownloader downloader = new VanillaDownloader();
-            try {
-                downloader.addDownloadFinishListener(event -> {
-                    try {
-                        System.out.println("[INFO]GameStarter Thread: Starting Game: (launchCommand)" + launchCommand);
-                        Process process = Runtime.getRuntime().exec(launchCommand);
-                        String inStr = consumeInputStream(process.getInputStream());
-                        String errStr = consumeInputStream(process.getErrorStream());
-                        int proc = process.waitFor();
-                        if (proc == 0) {
-                            System.out.println("[INFO]Game is Exited");
-                        } else {
-                            System.out.println("执行失败" + errStr);
-                        }
-                    } catch (IOException | InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
-                });
-                downloader.reDownloadFiles(new URL(assetsIndexUrl), assetsDir, assetIndex, libraries);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+            getLaunchCommand(uuid, mcToken, userName, type, assetIndex, assetsDir, gameDir, gameName, mainClass, libraries, argument, libDir);
         });
 
         controller.refreshToken();
@@ -104,7 +83,7 @@ public class JavaMCLauncher {
         return userConfigObj.getAsJsonArray("users").get(selectorIndex).getAsJsonObject();
     }
 
-    private String getLaunchCommand(String uuid, String token, String userName, String userType, String assetIndex, String assetDir, String gameDir, String gameVersion, String mainClass, JsonArray libraries, JsonObject arguments,String librariesDir) {
+    private void getLaunchCommand(String uuid, String token, String userName, String userType, String assetIndex, String assetDir, String gameDir, String gameVersion, String mainClass, JsonArray libraries, JsonObject arguments,String librariesDir) {
         StringBuilder libs = new StringBuilder();
         String separator;
         if (System.getProperty("os.name").contains("Windows")) {
@@ -221,11 +200,11 @@ public class JavaMCLauncher {
                     }
                 } else {
                     if (element.getAsString().contains("${natives_directory}")) {
-                        JVMBuilder.append(" ").append(element.getAsString().replace("${natives_directory}", gameDir + File.separator + "natives"));
+                        JVMBuilder.append(" \"").append(element.getAsString().replace("${natives_directory}", gameDir + File.separator + "natives")).append("\" ");
                     } else if (element.getAsString().contains("${launcher_name}")) {
-                        JVMBuilder.append(" ").append(element.getAsString().replace("${launcher_name}", "OpenMLauncher"));
+                        JVMBuilder.append(" \"").append(element.getAsString().replace("${launcher_name}", "OpenMLauncher")).append("\" ");
                     } else if (element.getAsString().contains("${launcher_version}")) {
-                        JVMBuilder.append(" ").append(element.getAsString().replace("${launcher_version}", "20"));
+                        JVMBuilder.append(" \"").append(element.getAsString().replace("${launcher_version}", "20")).append("\" ");
                     } else if (element.getAsString().contains("${version_name}")) {
                         JVMBuilder.append(" \"").append(element.getAsString().replace("${version_name}", gameVersion)).append("\"");
                     } else if (element.getAsString().contains("${classpath_separator}") && element.getAsString().contains("${library_directory}")) {
@@ -254,11 +233,11 @@ public class JavaMCLauncher {
             if (!element.isJsonObject()) {
                 if (element.getAsString().startsWith("${")) {
                     if (element.getAsString().contains("auth_uuid")) {
-                        gameArguments.append(uuid);
+                        gameArguments.append("\"").append(uuid).append("\"");
                     } else if (element.getAsString().contains("auth_access_token")) {
-                        gameArguments.append(token);
+                        gameArguments.append("\"").append(token).append("\"");
                     } else if (element.getAsString().contains("auth_player_name")) {
-                        gameArguments.append(userName);
+                        gameArguments.append("\"").append(userName).append("\"");
                     } else if (element.getAsString().contains("user_type")) {
                         gameArguments.append(userType);
                     } else if (element.getAsString().contains("version_type")) {
@@ -266,11 +245,11 @@ public class JavaMCLauncher {
                     } else if (element.getAsString().contains("assets_index_name")) {
                         gameArguments.append(assetIndex);
                     } else if (element.getAsString().contains("assets_root")) {
-                        gameArguments.append(assetDir);
+                        gameArguments.append("\"").append(assetDir).append("\"");
                     } else if (element.getAsString().contains("game_directory")) {
-                        gameArguments.append(gameDir);
+                        gameArguments.append("\"").append(gameDir).append("\"");
                     } else if (element.getAsString().contains("version_name")) {
-                        gameArguments.append(gameVersion);
+                        gameArguments.append("\"").append(gameVersion).append("\"");
                     } else if (element.getAsString().contains("clientid")) {
                         gameArguments.append("8073fcb7-1de0-4440-b6d3-62f8407bd5dc");
                     } else {
@@ -284,7 +263,7 @@ public class JavaMCLauncher {
 
         JVMBuilder.append(" ").append("-Duser.dir=\"").append(gameDir).append("\" ");
 
-        return "java " + JVMBuilder + " " + mainClass + " " + gameArguments;
+        this.launchCommand = "java " + JVMBuilder + " " + mainClass + " " + gameArguments;
     }
 
     private static String consumeInputStream(InputStream is) throws IOException {
@@ -296,5 +275,14 @@ public class JavaMCLauncher {
             sb.append(s);
         }
         return sb.toString();
+    }
+
+    public Process task() {
+        try {
+            System.out.println("[INFO]GameStarter Thread: Starting Game: (launchCommand)" + launchCommand);
+            return Runtime.getRuntime().exec(launchCommand);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
